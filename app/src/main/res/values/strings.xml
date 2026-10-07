@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">World Globe</string>
+    <string name="search_hint">Search country or city...</string>
+    <string name="zoom_in">Zoom In</string>
+    <string name="zoom_out">Zoom Out</string>
+    <string name="reset_view">Reset View</string>
+    <string name="auto_rotate">Auto Rotate</string>
+    <string name="location_history">Location History</string>
+    <string name="clear_history">Clear History</string>
+    <string name="no_history">No locations tracked yet</string>
+    <string name="no_history_desc">Search for countries or tap anywhere on the globe to explore and track history.</string>
+</resources>

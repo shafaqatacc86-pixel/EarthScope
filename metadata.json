@@ -1,0 +1,6 @@
+{
+  "name": "World Globe",
+  "description": "Interactive 3D rotating and zooming circle world map with country search, glowing border highlights, and location history tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
