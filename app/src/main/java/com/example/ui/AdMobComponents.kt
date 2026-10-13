@@ -228,144 +228,53 @@ fun AdMobAdaptiveBanner(
     val borderColor = if (isLightTheme) Color(0xFFCBD5E1) else Color(0xFF1E3252)
     val isEmulator = remember { AdMobSdkState.isRunningOnEmulator() }
     var adLoadFailed by remember(adUnitId) { mutableStateOf(false) }
+    var adLoadedSuccessfully by remember(adUnitId) { mutableStateOf(false) }
 
-    if (!AdMobConfig.IS_DUMMY_TEST_MODE && !isEmulator && AdMobSdkState.isInitialized && !adLoadFailed) {
-        Surface(
-            color = bannerBg,
-            border = BorderStroke(1.dp, borderColor),
-            shadowElevation = 4.dp,
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-                .testTag("admob_banner_$placementName")
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                androidx.compose.ui.viewinterop.AndroidView(
-                    modifier = Modifier.fillMaxWidth(),
-                    factory = { ctx ->
-                        com.google.android.gms.ads.AdView(ctx).apply {
-                            setAdSize(com.google.android.gms.ads.AdSize.BANNER)
-                            this.adUnitId = adUnitId
-                            adListener = object : com.google.android.gms.ads.AdListener() {
-                                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                    adLoadFailed = true
-                                }
-                            }
-                            try {
-                                loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
-                            } catch (_: Throwable) {
-                                adLoadFailed = true
-                            }
-                        }
-                    }
-                )
-            }
-        }
+    if (isEmulator || adLoadFailed) {
+        // Automatically hide and collapse space if running on emulator or ad load fails/offline
         return
     }
 
-    val context = LocalContext.current
-    val creativeIndex = remember(placementName) {
-        kotlin.math.abs(placementName.hashCode()) % DUMMY_AD_CREATIVES.size
-    }
-    val creative = DUMMY_AD_CREATIVES[creativeIndex]
-    val primaryText = if (isLightTheme) Color(0xFF0F172A) else Color.White
-    val secondaryText = if (isLightTheme) Color(0xFF475569) else Color(0xFF94A3B8)
-
     Surface(
         color = bannerBg,
-        border = BorderStroke(1.dp, borderColor),
-        shadowElevation = 4.dp,
+        border = if (adLoadedSuccessfully) BorderStroke(1.dp, borderColor) else null,
+        shadowElevation = if (adLoadedSuccessfully) 4.dp else 0.dp,
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp)
+            .padding(bottom = if (adLoadedSuccessfully) 8.dp else 0.dp)
             .testTag("admob_banner_$placementName")
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
-                    Toast.makeText(
-                        context,
-                        "Sponsored Offer",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = if (adLoadedSuccessfully) 4.dp else 0.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(creative.accentColor.copy(alpha = 0.16f))
-                    .border(1.dp, creative.accentColor.copy(alpha = 0.5f), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = creative.icon,
-                    contentDescription = null,
-                    tint = creative.accentColor,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            androidx.compose.ui.viewinterop.AndroidView(
+                modifier = Modifier.fillMaxWidth(),
+                factory = { ctx ->
+                    com.google.android.gms.ads.AdView(ctx).apply {
+                        setAdSize(com.google.android.gms.ads.AdSize.BANNER)
+                        this.adUnitId = adUnitId
+                        adListener = object : com.google.android.gms.ads.AdListener() {
+                            override fun onAdLoaded() {
+                                adLoadedSuccessfully = true
+                                adLoadFailed = false
+                            }
 
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = Color(0xFFF59E0B),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = "Ad",
-                            fontSize = 8.5.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.Black,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                        )
+                            override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                                adLoadFailed = true
+                                adLoadedSuccessfully = false
+                            }
+                        }
+                        try {
+                            loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
+                        } catch (_: Throwable) {
+                            adLoadFailed = true
+                        }
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = creative.headline,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = primaryText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = creative.body.removePrefix("Test Ad: "),
-                    fontSize = 10.sp,
-                    color = secondaryText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Surface(
-                color = creative.accentColor,
-                shape = RoundedCornerShape(50)
-            ) {
-                Text(
-                    text = creative.ctaText,
-                    fontSize = 10.5.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    maxLines = 1
-                )
-            }
+            )
         }
     }
 }
@@ -386,156 +295,54 @@ fun AdMobNativeAdCard(
     val borderColor = if (isLightTheme) Color(0xFFCBD5E1) else Color(0xFF23385E)
     val isEmulator = remember { AdMobSdkState.isRunningOnEmulator() }
     var adLoadFailed by remember(adUnitId) { mutableStateOf(false) }
+    var adLoadedSuccessfully by remember(adUnitId) { mutableStateOf(false) }
 
-    if (!AdMobConfig.IS_DUMMY_TEST_MODE && !isEmulator && AdMobSdkState.isInitialized && !adLoadFailed) {
-        Surface(
-            color = cardBg,
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.2.dp, borderColor),
-            shadowElevation = 4.dp,
-            modifier = modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .testTag("admob_native_$placementName")
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                androidx.compose.ui.viewinterop.AndroidView(
-                    modifier = Modifier.fillMaxWidth(),
-                    factory = { ctx ->
-                        com.google.android.gms.ads.AdView(ctx).apply {
-                            setAdSize(com.google.android.gms.ads.AdSize.BANNER)
-                            this.adUnitId = adUnitId
-                            adListener = object : com.google.android.gms.ads.AdListener() {
-                                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                    adLoadFailed = true
-                                }
-                            }
-                            try {
-                                loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
-                            } catch (_: Throwable) {
-                                adLoadFailed = true
-                            }
-                        }
-                    }
-                )
-            }
-        }
+    if (isEmulator || adLoadFailed) {
+        // Automatically hide and collapse space if running on emulator or ad load fails/offline
         return
     }
 
-    val context = LocalContext.current
-    val creativeIndex = remember(placementName) {
-        (kotlin.math.abs(placementName.hashCode()) + 1) % DUMMY_AD_CREATIVES.size
-    }
-    val creative = DUMMY_AD_CREATIVES[creativeIndex]
-    val primaryText = if (isLightTheme) Color(0xFF0F172A) else Color.White
-    val secondaryText = if (isLightTheme) Color(0xFF475569) else Color(0xFF94A3B8)
-
     Surface(
-        color = cardBg,
+        color = if (adLoadedSuccessfully) cardBg else Color.Transparent,
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.2.dp, creative.accentColor.copy(alpha = 0.45f)),
-        shadowElevation = 4.dp,
+        border = if (adLoadedSuccessfully) BorderStroke(1.2.dp, borderColor) else null,
+        shadowElevation = if (adLoadedSuccessfully) 4.dp else 0.dp,
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .clickable {
-                Toast.makeText(
-                    context,
-                    "Sponsored Offer",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
             .testTag("admob_native_$placementName")
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(vertical = if (adLoadedSuccessfully) 8.dp else 0.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Row(
+            androidx.compose.ui.viewinterop.AndroidView(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    creative.accentColor,
-                                    creative.accentColor.copy(alpha = 0.6f)
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = creative.icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                factory = { ctx ->
+                    com.google.android.gms.ads.AdView(ctx).apply {
+                        setAdSize(com.google.android.gms.ads.AdSize.BANNER)
+                        this.adUnitId = adUnitId
+                        adListener = object : com.google.android.gms.ads.AdListener() {
+                            override fun onAdLoaded() {
+                                adLoadedSuccessfully = true
+                                adLoadFailed = false
+                            }
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            color = Color(0xFFF59E0B),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = "Ad",
-                                fontSize = 8.5.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.Black,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                            )
+                            override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                                adLoadFailed = true
+                                adLoadedSuccessfully = false
+                            }
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = creative.headline,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = primaryText,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        try {
+                            loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
+                        } catch (_: Throwable) {
+                            adLoadFailed = true
+                        }
                     }
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = creative.body.removePrefix("Test Ad: "),
-                        fontSize = 11.5.sp,
-                        color = secondaryText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Surface(
-                    color = creative.accentColor,
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = creative.ctaText,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                        maxLines = 1
-                    )
-                }
-            }
+            )
         }
     }
 }
