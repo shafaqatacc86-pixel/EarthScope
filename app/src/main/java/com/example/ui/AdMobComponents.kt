@@ -1,0 +1,1089 @@
+package com.example.ui
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdUnits
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Launch
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.delay
+
+/**
+ * ============================================================================
+ * CENTRALIZED GOOGLE ADMOB CONFIGURATION & DUMMY/TEST AD ENGINE
+ * ============================================================================
+ * Currently configured with Official Google AdMob Dummy/Test Ad Unit IDs
+ * so you can preview every Ad placement safely without policy violations.
+ *
+ * LATER: When you provide your real AdMob App ID & Ad Unit IDs, simply
+ * replace the IDs below and set IS_DUMMY_TEST_MODE = false!
+ * ============================================================================
+ */
+object AdMobSdkState {
+    var isInitialized by mutableStateOf(false)
+        private set
+
+    fun markInitialized() {
+        isInitialized = true
+    }
+
+    fun isRunningOnEmulator(): Boolean {
+        val fingerprint = android.os.Build.FINGERPRINT ?: ""
+        val model = android.os.Build.MODEL ?: ""
+        val product = android.os.Build.PRODUCT ?: ""
+        val hardware = android.os.Build.HARDWARE ?: ""
+        return fingerprint.startsWith("generic") ||
+            fingerprint.lowercase().contains("emulator") ||
+            model.contains("Emulator") ||
+            model.contains("Android SDK built for") ||
+            model.contains("sdk_gphone") ||
+            product.contains("sdk") ||
+            product.contains("emulator") ||
+            hardware.contains("goldfish") ||
+            hardware.contains("ranchu") ||
+            hardware.contains("cuttlefish") ||
+            hardware.contains("vsoc")
+    }
+}
+
+object AdMobConfig {
+    // Live Production Mode enabled with real AdMob IDs on physical devices;
+    // automatically avoids emulator AdServices / MESA rendernode errors on virtual devices
+    const val IS_DUMMY_TEST_MODE: Boolean = false
+
+    // 1. Google AdMob App ID (Also placed in AndroidManifest.xml)
+    const val ADMOB_APP_ID: String = "ca-app-pub-9038493214458444~4203142842"
+
+    // 2. Banner Ad Unit IDs (Your Real Banner Ad Unit ID)
+    const val BANNER_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/4241529650"
+    const val BANNER_HOME_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val BANNER_SPEEDOMETER_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val BANNER_COMPASS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val BANNER_SHARE_LOC_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val BANNER_PIN_DETAILS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val BANNER_SAVED_PLACES_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val BANNER_TRIP_HISTORY_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+
+    // 3. Inline Feed / Card Ad Unit IDs (Uses your Real Banner Ad Unit ID until a dedicated Native ID is added)
+    const val NATIVE_HOME_FEED_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val NATIVE_NEARBY_PLACES_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val NATIVE_COUNTRY_DETAILS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+    const val NATIVE_COUNTRY_ATLAS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
+
+    // 4. Interstitial Full-Screen Ad Unit IDs (Your Real Interstitial Ad Unit ID)
+    const val INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/6288363636"
+    const val INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
+    const val INTERSTITIAL_PIN_SAVED_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
+
+    // 5. Rewarded & Rewarded Interstitial Ad Unit IDs (Your Real Rewarded Ad Unit IDs)
+    const val REWARDED_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/2681035976"
+    const val REWARDED_INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/5307199318"
+
+    // 6. App Open Ad Unit ID
+    const val APP_OPEN_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
+
+    // Frequency Capping Settings (Google Policy Safe)
+    const val INTERSTITIAL_CLICK_INTERVAL: Int = 3 // Show every 3rd feature navigation
+    const val INTERSTITIAL_MIN_COOLDOWN_MS: Long = 45_000L // Minimum 45 sec gap between interstitials
+}
+
+/**
+ * Sample Dummy Ad Creative Data for fallback preview when offline or while AdMob inventory is warming up
+ */
+data class DummyAdCreative(
+    val headline: String,
+    val body: String,
+    val advertiser: String,
+    val rating: String,
+    val priceOrTag: String,
+    val ctaText: String,
+    val accentColor: Color,
+    val icon: ImageVector
+)
+
+private val DUMMY_AD_CREATIVES = listOf(
+    DummyAdCreative(
+        headline = "Google Maps Cloud Pro • Satellite HD",
+        body = "Test Ad: Upgrade your outdoor navigation with offline 3D terrain & live traffic alerts.",
+        advertiser = "Google AdMob Test Network",
+        rating = "4.9 ★",
+        priceOrTag = "FREE",
+        ctaText = "Install Now",
+        accentColor = Color(0xFF0284C7),
+        icon = Icons.Default.Public
+    ),
+    DummyAdCreative(
+        headline = "Smart Dashcam & GPS Trip Logger",
+        body = "Test Ad: Record HD road trips, speed graphs & automatic cloud backup while driving.",
+        advertiser = "AdMob Dummy Advertiser",
+        rating = "4.8 ★",
+        priceOrTag = "App Store",
+        ctaText = "Learn More",
+        accentColor = Color(0xFF10B981),
+        icon = Icons.Default.Speed
+    ),
+    DummyAdCreative(
+        headline = "World Traveler Flights & Hotels",
+        body = "Test Ad: Compare global flights, book hotels near your GPS pin and save up to 40%.",
+        advertiser = "TravelScope Sponsored",
+        rating = "4.7 ★",
+        priceOrTag = "Sponsored",
+        ctaText = "Open Offer",
+        accentColor = Color(0xFF8B5CF6),
+        icon = Icons.Default.Explore
+    ),
+    DummyAdCreative(
+        headline = "TrailFinder 3D Compass & Topo Maps",
+        body = "Test Ad: Precision altimeter, magnetic compass & offline hiking trails worldwide.",
+        advertiser = "AdMob Test Creative",
+        rating = "4.9 ★",
+        priceOrTag = "Editor's Choice",
+        ctaText = "Try Free",
+        accentColor = Color(0xFFF59E0B),
+        icon = Icons.Default.Map
+    )
+)
+
+/**
+ * ============================================================================
+ * 1. ADAPTIVE BANNER AD COMPONENT (Real Google AdMob AdView + Safe Container)
+ * ============================================================================
+ */
+@Composable
+fun AdMobAdaptiveBanner(
+    placementName: String,
+    adUnitId: String = AdMobConfig.BANNER_HOME_AD_UNIT_ID,
+    isLightTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val bannerBg = if (isLightTheme) Color(0xFFF8FAFC) else Color(0xFF0D1729)
+    val borderColor = if (isLightTheme) Color(0xFFCBD5E1) else Color(0xFF1E3252)
+    val isEmulator = remember { AdMobSdkState.isRunningOnEmulator() }
+    var adLoadFailed by remember(adUnitId) { mutableStateOf(false) }
+
+    if (!AdMobConfig.IS_DUMMY_TEST_MODE && !isEmulator && AdMobSdkState.isInitialized && !adLoadFailed) {
+        Surface(
+            color = bannerBg,
+            border = BorderStroke(1.dp, borderColor),
+            shadowElevation = 4.dp,
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .testTag("admob_banner_$placementName")
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.ui.viewinterop.AndroidView(
+                    modifier = Modifier.fillMaxWidth(),
+                    factory = { ctx ->
+                        com.google.android.gms.ads.AdView(ctx).apply {
+                            setAdSize(com.google.android.gms.ads.AdSize.BANNER)
+                            this.adUnitId = adUnitId
+                            adListener = object : com.google.android.gms.ads.AdListener() {
+                                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                                    adLoadFailed = true
+                                }
+                            }
+                            try {
+                                loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
+                            } catch (_: Throwable) {
+                                adLoadFailed = true
+                            }
+                        }
+                    }
+                )
+            }
+        }
+        return
+    }
+
+    val context = LocalContext.current
+    val creativeIndex = remember(placementName) {
+        kotlin.math.abs(placementName.hashCode()) % DUMMY_AD_CREATIVES.size
+    }
+    val creative = DUMMY_AD_CREATIVES[creativeIndex]
+    val primaryText = if (isLightTheme) Color(0xFF0F172A) else Color.White
+    val secondaryText = if (isLightTheme) Color(0xFF475569) else Color(0xFF94A3B8)
+
+    Surface(
+        color = bannerBg,
+        border = BorderStroke(1.dp, borderColor),
+        shadowElevation = 4.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .testTag("admob_banner_$placementName")
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    Toast.makeText(
+                        context,
+                        "Sponsored Offer",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(creative.accentColor.copy(alpha = 0.16f))
+                    .border(1.dp, creative.accentColor.copy(alpha = 0.5f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = creative.icon,
+                    contentDescription = null,
+                    tint = creative.accentColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color(0xFFF59E0B),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "Ad",
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.Black,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = creative.headline,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = primaryText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = creative.body.removePrefix("Test Ad: "),
+                    fontSize = 10.sp,
+                    color = secondaryText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Surface(
+                color = creative.accentColor,
+                shape = RoundedCornerShape(50)
+            ) {
+                Text(
+                    text = creative.ctaText,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+/**
+ * ============================================================================
+ * 2. INLINE CARD AD COMPONENT (Renders Real AdMob Banner inside Material 3 Card)
+ * ============================================================================
+ */
+@Composable
+fun AdMobNativeAdCard(
+    placementName: String,
+    adUnitId: String = AdMobConfig.NATIVE_HOME_FEED_AD_UNIT_ID,
+    isLightTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val cardBg = if (isLightTheme) Color.White else Color(0xFF111E34)
+    val borderColor = if (isLightTheme) Color(0xFFCBD5E1) else Color(0xFF23385E)
+    val isEmulator = remember { AdMobSdkState.isRunningOnEmulator() }
+    var adLoadFailed by remember(adUnitId) { mutableStateOf(false) }
+
+    if (!AdMobConfig.IS_DUMMY_TEST_MODE && !isEmulator && AdMobSdkState.isInitialized && !adLoadFailed) {
+        Surface(
+            color = cardBg,
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.2.dp, borderColor),
+            shadowElevation = 4.dp,
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .testTag("admob_native_$placementName")
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.ui.viewinterop.AndroidView(
+                    modifier = Modifier.fillMaxWidth(),
+                    factory = { ctx ->
+                        com.google.android.gms.ads.AdView(ctx).apply {
+                            setAdSize(com.google.android.gms.ads.AdSize.BANNER)
+                            this.adUnitId = adUnitId
+                            adListener = object : com.google.android.gms.ads.AdListener() {
+                                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                                    adLoadFailed = true
+                                }
+                            }
+                            try {
+                                loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
+                            } catch (_: Throwable) {
+                                adLoadFailed = true
+                            }
+                        }
+                    }
+                )
+            }
+        }
+        return
+    }
+
+    val context = LocalContext.current
+    val creativeIndex = remember(placementName) {
+        (kotlin.math.abs(placementName.hashCode()) + 1) % DUMMY_AD_CREATIVES.size
+    }
+    val creative = DUMMY_AD_CREATIVES[creativeIndex]
+    val primaryText = if (isLightTheme) Color(0xFF0F172A) else Color.White
+    val secondaryText = if (isLightTheme) Color(0xFF475569) else Color(0xFF94A3B8)
+
+    Surface(
+        color = cardBg,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.2.dp, creative.accentColor.copy(alpha = 0.45f)),
+        shadowElevation = 4.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .clickable {
+                Toast.makeText(
+                    context,
+                    "Sponsored Offer",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .testTag("admob_native_$placementName")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    creative.accentColor,
+                                    creative.accentColor.copy(alpha = 0.6f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = creative.icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            color = Color(0xFFF59E0B),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "Ad",
+                                fontSize = 8.5.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.Black,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = creative.headline,
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = primaryText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = creative.body.removePrefix("Test Ad: "),
+                        fontSize = 11.5.sp,
+                        color = secondaryText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Surface(
+                    color = creative.accentColor,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = creative.ctaText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Helper to load and show a Real Google AdMob Rewarded Ad or Rewarded Interstitial Ad
+ */
+fun showRealAdMobRewardedAd(
+    context: Context,
+    useRewardedInterstitial: Boolean = false,
+    onRewardEarned: () -> Unit = {},
+    onDismissed: () -> Unit = {}
+) {
+    val activity = context as? Activity
+    if (activity == null || AdMobSdkState.isRunningOnEmulator()) {
+        onRewardEarned()
+        onDismissed()
+        return
+    }
+    val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
+    if (useRewardedInterstitial) {
+        com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd.load(
+            context,
+            AdMobConfig.REWARDED_INTERSTITIAL_AD_UNIT_ID,
+            adRequest,
+            object : com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAdLoadCallback() {
+                override fun onAdLoaded(ad: com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd) {
+                    ad.fullScreenContentCallback = object : com.google.android.gms.ads.FullScreenContentCallback() {
+                        override fun onAdDismissedFullScreenContent() {
+                            onDismissed()
+                        }
+                        override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+                            onDismissed()
+                        }
+                    }
+                    ad.show(activity) { onRewardEarned() }
+                }
+                override fun onAdFailedToLoad(loadAdError: com.google.android.gms.ads.LoadAdError) {
+                    onDismissed()
+                }
+            }
+        )
+    } else {
+        com.google.android.gms.ads.rewarded.RewardedAd.load(
+            context,
+            AdMobConfig.REWARDED_AD_UNIT_ID,
+            adRequest,
+            object : com.google.android.gms.ads.rewarded.RewardedAdLoadCallback() {
+                override fun onAdLoaded(ad: com.google.android.gms.ads.rewarded.RewardedAd) {
+                    ad.fullScreenContentCallback = object : com.google.android.gms.ads.FullScreenContentCallback() {
+                        override fun onAdDismissedFullScreenContent() {
+                            onDismissed()
+                        }
+                        override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+                            onDismissed()
+                        }
+                    }
+                    ad.show(activity) { onRewardEarned() }
+                }
+                override fun onAdFailedToLoad(loadAdError: com.google.android.gms.ads.LoadAdError) {
+                    onDismissed()
+                }
+            }
+        )
+    }
+}
+
+/**
+ * ============================================================================
+ * 3. FULL-SCREEN INTERSTITIAL AD HANDLER (Real Google AdMob InterstitialAd)
+ * ============================================================================
+ */
+@Composable
+fun AdMobDummyInterstitialDialog(
+    placementTrigger: String,
+    adUnitId: String = AdMobConfig.INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID,
+    onAdClosed: () -> Unit
+) {
+    val context = LocalContext.current
+    val isEmulator = remember { AdMobSdkState.isRunningOnEmulator() }
+
+    if (!AdMobConfig.IS_DUMMY_TEST_MODE && !isEmulator) {
+        LaunchedEffect(adUnitId) {
+            val activity = context as? Activity
+            if (activity == null) {
+                onAdClosed()
+                return@LaunchedEffect
+            }
+            val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
+            com.google.android.gms.ads.interstitial.InterstitialAd.load(
+                context,
+                adUnitId,
+                adRequest,
+                object : com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback() {
+                    override fun onAdLoaded(interstitialAd: com.google.android.gms.ads.interstitial.InterstitialAd) {
+                        interstitialAd.fullScreenContentCallback =
+                            object : com.google.android.gms.ads.FullScreenContentCallback() {
+                                override fun onAdDismissedFullScreenContent() {
+                                    onAdClosed()
+                                }
+
+                                override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+                                    onAdClosed()
+                                }
+                            }
+                        interstitialAd.show(activity)
+                    }
+
+                    override fun onAdFailedToLoad(loadAdError: com.google.android.gms.ads.LoadAdError) {
+                        onAdClosed()
+                    }
+                }
+            )
+        }
+        return
+    }
+
+    var countdownSec by remember { mutableIntStateOf(2) }
+
+    LaunchedEffect(Unit) {
+        while (countdownSec > 0) {
+            delay(1000L)
+            countdownSec -= 1
+        }
+    }
+
+    Surface(
+        color = Color(0xFF060E1E),
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(enabled = true, onClick = {})
+            .testTag("admob_interstitial_dialog")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Top Bar: Compact Ad Badge + Sleek Single-Line Close / Countdown Pill
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    color = Color(0xFF1E293B),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, Color(0xFFF59E0B))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = Color(0xFFF59E0B),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "Ad",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.Black,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Test Interstitial",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Surface(
+                    color = if (countdownSec <= 0) Color(0xFFEF4444) else Color(0xFF1E293B),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
+                    modifier = Modifier
+                        .clickable(enabled = countdownSec <= 0) { onAdClosed() }
+                        .testTag("close_interstitial_ad_button")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (countdownSec > 0) {
+                            Text(
+                                text = "${countdownSec}s",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF94A3B8),
+                                maxLines = 1
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close Ad",
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = "Close",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Center Hero Dummy Ad Card
+            Surface(
+                color = Color(0xFF111E34),
+                shape = RoundedCornerShape(28.dp),
+                border = BorderStroke(1.5.dp, Color(0xFF38BDF8).copy(alpha = 0.5f)),
+                shadowElevation = 16.dp,
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(22.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(76.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Color(0xFF0284C7), Color(0xFF22C55E))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AdUnits,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(42.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Surface(
+                        color = Color(0xFF22C55E).copy(alpha = 0.16f),
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(1.dp, Color(0xFF22C55E).copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = "INTERSTITIAL AD PREVIEW",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF4ADE80),
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "EarthScope Pro",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Sample full-screen interstitial placeholder ($placementTrigger).",
+                        fontSize = 12.sp,
+                        color = Color(0xFFCBD5E1),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 17.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Surface(
+                        color = Color(0xFF0B1528),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFF1E3252)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "TEST AD UNIT ID",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF38BDF8),
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = adUnitId,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            onAdClosed()
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF0284C7),
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Text(
+                            text = "Continue",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            // Bottom Footer Note
+            Text(
+                text = "Frequency Capped Interstitial",
+                fontSize = 11.sp,
+                color = Color(0xFF64748B),
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+/**
+ * ============================================================================
+ * 4. APP OPEN AD OVERLAY BANNER/MODAL (Shown once after Splash Screen)
+ * ============================================================================
+ */
+@Composable
+fun AdMobDummyAppOpenDialog(
+    adUnitId: String = AdMobConfig.APP_OPEN_AD_UNIT_ID,
+    onContinueToApp: () -> Unit
+) {
+    var autoProgress by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        for (i in 1..100) {
+            delay(28L)
+            autoProgress = i
+        }
+    }
+
+    Surface(
+        color = Color(0xFF040B18),
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(enabled = true, onClick = {})
+            .testTag("admob_app_open_dialog")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Top App Header + "Continue to App" Button (Standard Google App Open Ad Bar)
+            Surface(
+                color = Color(0xFF111E34),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, Color(0xFF1E3252)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        EarthScopeTransparentLogo(modifier = Modifier.size(32.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Earth Scope",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "App Open Test Ad",
+                                fontSize = 10.sp,
+                                color = Color(0xFF38BDF8)
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = onContinueToApp,
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF22C55E),
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .height(36.dp)
+                            .testTag("continue_to_app_from_app_open_ad")
+                    ) {
+                        Text(
+                            text = "Continue to App →",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
+
+            // Center App Open Ad Creative
+            Surface(
+                color = Color(0xFF0F1B30),
+                shape = RoundedCornerShape(26.dp),
+                border = BorderStroke(1.5.dp, Color(0xFFF59E0B).copy(alpha = 0.55f)),
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            color = Color(0xFFF59E0B),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "APP OPEN AD",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.Black,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Google AdMob Dummy Test",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .size(76.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFF59E0B).copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color(0xFFF59E0B),
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Welcome to EarthScope 3D",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "This is your App Open Ad placement shown when the app launches. Replace APP_OPEN_AD_UNIT_ID in AdMobConfig.kt with your real ID anytime.",
+                        fontSize = 12.5.sp,
+                        color = Color(0xFFCBD5E1),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Test ID: $adUnitId",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF38BDF8)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    LinearProgressIndicator(
+                        progress = { autoProgress / 100f },
+                        color = Color(0xFF22C55E),
+                        trackColor = Color(0xFF1E293B),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(50))
+                    )
+                }
+            }
+
+            Text(
+                text = "Tap 'Continue to App' above to close App Open Ad",
+                fontSize = 11.sp,
+                color = Color(0xFF94A3B8)
+            )
+        }
+    }
+}
