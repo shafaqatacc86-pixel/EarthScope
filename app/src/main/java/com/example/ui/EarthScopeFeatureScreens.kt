@@ -2229,6 +2229,13 @@ fun InteractiveMapPageScreen(
                     }
                 }
             }
+
+            // Google Map Screen Bottom Banner Ad (Placed cleanly below map controls without overlapping)
+            AdMobAdaptiveBanner(
+                placementName = "Google_Map_Page_Banner",
+                adUnitId = AdMobConfig.BANNER_HOME_AD_UNIT_ID,
+                isLightTheme = isLightTheme
+            )
         }
     }
 

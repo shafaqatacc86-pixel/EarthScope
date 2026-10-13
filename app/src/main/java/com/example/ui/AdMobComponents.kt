@@ -115,14 +115,14 @@ object AdMobSdkState {
 }
 
 object AdMobConfig {
-    // Official Google AdMob Test Mode Enabled
+    // Live Production Mode Enabled with User's Real AdMob IDs
     const val IS_DUMMY_TEST_MODE: Boolean = false
 
-    // 1. Google Official Test AdMob App ID
-    const val ADMOB_APP_ID: String = "ca-app-pub-3940256099942544~3347511713"
+    // 1. User's Real Google AdMob App ID
+    const val ADMOB_APP_ID: String = "ca-app-pub-9038493214458444~4203142842"
 
-    // 2. Google Official Test Banner Ad Unit ID
-    const val BANNER_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/6300978111"
+    // 2. User's Real Banner Ad Unit ID
+    const val BANNER_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/4241529650"
     const val BANNER_HOME_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val BANNER_SPEEDOMETER_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val BANNER_COMPASS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
@@ -137,17 +137,17 @@ object AdMobConfig {
     const val NATIVE_COUNTRY_DETAILS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val NATIVE_COUNTRY_ATLAS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
 
-    // 4. Google Official Test Interstitial Full-Screen Ad Unit ID
-    const val INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/1033173712"
+    // 4. User's Real Interstitial Full-Screen Ad Unit ID
+    const val INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/6288363636"
     const val INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
     const val INTERSTITIAL_PIN_SAVED_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
 
-    // 5. Google Official Test Rewarded & Rewarded Interstitial Ad Unit IDs
-    const val REWARDED_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/5224354917"
-    const val REWARDED_INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/5354046379"
+    // 5. User's Real Rewarded & Rewarded Interstitial Ad Unit IDs
+    const val REWARDED_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/2681035976"
+    const val REWARDED_INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/5307199318"
 
-    // 6. Google Official Test App Open Ad Unit ID
-    const val APP_OPEN_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/9257399415"
+    // 6. User's Real App Open Ad Unit ID
+    const val APP_OPEN_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
 
     // Frequency Capping Settings (Google Policy Safe)
     const val INTERSTITIAL_CLICK_INTERVAL: Int = 3 // Show every 3rd feature navigation
@@ -421,286 +421,79 @@ fun AdMobDummyInterstitialDialog(
     onAdClosed: () -> Unit
 ) {
     val context = LocalContext.current
-    val isEmulator = remember { AdMobSdkState.isRunningOnEmulator() }
+    val activity = remember(context) {
+        var ctx = context
+        while (ctx is android.content.ContextWrapper) {
+            if (ctx is Activity) break
+            ctx = ctx.baseContext
+        }
+        ctx as? Activity
+    }
 
-    if (!AdMobConfig.IS_DUMMY_TEST_MODE && !isEmulator) {
-        LaunchedEffect(adUnitId) {
-            val activity = context as? Activity
-            if (activity == null) {
-                onAdClosed()
-                return@LaunchedEffect
-            }
-            val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
-            com.google.android.gms.ads.interstitial.InterstitialAd.load(
-                context,
-                adUnitId,
-                adRequest,
-                object : com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback() {
-                    override fun onAdLoaded(interstitialAd: com.google.android.gms.ads.interstitial.InterstitialAd) {
-                        interstitialAd.fullScreenContentCallback =
-                            object : com.google.android.gms.ads.FullScreenContentCallback() {
-                                override fun onAdDismissedFullScreenContent() {
-                                    onAdClosed()
-                                }
-
-                                override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
-                                    onAdClosed()
-                                }
+    LaunchedEffect(adUnitId) {
+        if (activity == null) {
+            onAdClosed()
+            return@LaunchedEffect
+        }
+        val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
+        com.google.android.gms.ads.interstitial.InterstitialAd.load(
+            context,
+            adUnitId,
+            adRequest,
+            object : com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback() {
+                override fun onAdLoaded(interstitialAd: com.google.android.gms.ads.interstitial.InterstitialAd) {
+                    interstitialAd.fullScreenContentCallback =
+                        object : com.google.android.gms.ads.FullScreenContentCallback() {
+                            override fun onAdDismissedFullScreenContent() {
+                                onAdClosed()
                             }
-                        interstitialAd.show(activity)
-                    }
 
-                    override fun onAdFailedToLoad(loadAdError: com.google.android.gms.ads.LoadAdError) {
-                        onAdClosed()
-                    }
+                            override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+                                onAdClosed()
+                            }
+                        }
+                    interstitialAd.show(activity)
                 }
-            )
-        }
-        return
+
+                override fun onAdFailedToLoad(loadAdError: com.google.android.gms.ads.LoadAdError) {
+                    onAdClosed()
+                }
+            }
+        )
     }
 
-    var countdownSec by remember { mutableIntStateOf(2) }
-
-    LaunchedEffect(Unit) {
-        while (countdownSec > 0) {
-            delay(1000L)
-            countdownSec -= 1
-        }
-    }
-
-    Surface(
-        color = Color(0xFF060E1E),
-        modifier = Modifier
-            .fillMaxSize()
-            .clickable(enabled = true, onClick = {})
-            .testTag("admob_interstitial_dialog")
+    // Centered non-intrusive loading dialog while Google prepares the full-screen ad
+    Dialog(
+        onDismissRequest = { onAdClosed() },
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+        Surface(
+            color = Color(0xFF0F172A),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.5f))
         ) {
-            // Top Bar: Compact Ad Badge + Sleek Single-Line Close / Countdown Pill
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    color = Color(0xFF1E293B),
-                    shape = RoundedCornerShape(50),
-                    border = BorderStroke(1.dp, Color(0xFFF59E0B))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            color = Color(0xFFF59E0B),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = "Ad",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.Black,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Test Interstitial",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Surface(
-                    color = if (countdownSec <= 0) Color(0xFFEF4444) else Color(0xFF1E293B),
-                    shape = RoundedCornerShape(50),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
-                    modifier = Modifier
-                        .clickable(enabled = countdownSec <= 0) { onAdClosed() }
-                        .testTag("close_interstitial_ad_button")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (countdownSec > 0) {
-                            Text(
-                                text = "${countdownSec}s",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF94A3B8),
-                                maxLines = 1
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close Ad",
-                                tint = Color.White,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Spacer(modifier = Modifier.width(5.dp))
-                            Text(
-                                text = "Close",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color(0xFF38BDF8),
+                    strokeWidth = 2.5.dp
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Loading Ad...",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
-
-            // Center Hero Dummy Ad Card
-            Surface(
-                color = Color(0xFF111E34),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.5.dp, Color(0xFF38BDF8).copy(alpha = 0.5f)),
-                shadowElevation = 16.dp,
-                modifier = Modifier
-                    .widthIn(max = 420.dp)
-                    .fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(22.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(76.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(Color(0xFF0284C7), Color(0xFF22C55E))
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AdUnits,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(42.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Surface(
-                        color = Color(0xFF22C55E).copy(alpha = 0.16f),
-                        shape = RoundedCornerShape(50),
-                        border = BorderStroke(1.dp, Color(0xFF22C55E).copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = "INTERSTITIAL AD PREVIEW",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF4ADE80),
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "EarthScope Pro",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = "Sample full-screen interstitial placeholder ($placementTrigger).",
-                        fontSize = 12.sp,
-                        color = Color(0xFFCBD5E1),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 17.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Surface(
-                        color = Color(0xFF0B1528),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color(0xFF1E3252)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "TEST AD UNIT ID",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF38BDF8),
-                                maxLines = 1
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = adUnitId,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            onAdClosed()
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF0284C7),
-                            contentColor = Color.White
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text(
-                            text = "Continue",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
-
-            // Bottom Footer Note
-            Text(
-                text = "Frequency Capped Interstitial",
-                fontSize = 11.sp,
-                color = Color(0xFF64748B),
-                textAlign = TextAlign.Center,
-                maxLines = 1
-            )
         }
     }
 }
+
+
 
 /**
  * ============================================================================

@@ -163,14 +163,20 @@ fun EarthScopeAppHost(viewModel: GlobeViewModel) {
     // First-Launch Privacy Policy & Terms Consent Dialog State
     var hasAcceptedPrivacyTerms by remember { mutableStateOf(localStore.hasAcceptedPrivacyAndTerms()) }
 
-    // Frequency-Capped Interstitial Dummy Ad States
+    // Frequency-Capped Interstitial Ad Manager (Shows on feature navigation)
     var featureNavigationClickCount by remember { mutableIntStateOf(0) }
-    var lastInterstitialShownTimeMs by remember { mutableLongStateOf(0L) }
     var pendingInterstitialAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-    var interstitialTriggerLabel by remember { mutableStateOf("Feature Navigation") }
+    var showInterstitialDialog by remember { mutableStateOf(false) }
 
     fun navigateWithOptionalInterstitial(triggerLabel: String, action: () -> Unit) {
-        action()
+        featureNavigationClickCount += 1
+        // Show interstitial ad every 2nd navigation so user can clearly test it!
+        if (featureNavigationClickCount % 2 == 0) {
+            pendingInterstitialAction = action
+            showInterstitialDialog = true
+        } else {
+            action()
+        }
     }
 
     val dashboardGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
@@ -363,12 +369,13 @@ fun EarthScopeAppHost(viewModel: GlobeViewModel) {
             )
         }
 
-        // Frequency-Capped Interstitial Dummy Ad Dialog
-        if (pendingInterstitialAction != null) {
+        // Frequency-Capped Interstitial Ad Dialog
+        if (showInterstitialDialog) {
             AdMobDummyInterstitialDialog(
-                placementTrigger = interstitialTriggerLabel,
+                placementTrigger = "Feature Navigation",
                 adUnitId = AdMobConfig.INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID,
                 onAdClosed = {
+                    showInterstitialDialog = false
                     val action = pendingInterstitialAction
                     pendingInterstitialAction = null
                     action?.invoke()

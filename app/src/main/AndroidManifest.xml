@@ -20,10 +20,10 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
 
-        <!-- Google AdMob App ID (Official Test App ID) -->
+        <!-- Google AdMob App ID (User Real Live Production ID) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-9038493214458444~4203142842" />
 
         <!-- Optimize AdMob initialization & ad loading on background threads -->
         <meta-data
