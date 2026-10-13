@@ -822,8 +822,12 @@ fun GlobeScreen(
                     }
                 }
 
-                // Reserved clean bottom space (68.dp) above system navigation menu for future Banner Ad placement
-                Spacer(modifier = Modifier.height(68.dp))
+                // Banner Ad on 3D World Globe page
+                AdMobAdaptiveBanner(
+                    placementName = "Globe_World_Banner",
+                    adUnitId = AdMobConfig.BANNER_HOME_AD_UNIT_ID,
+                    isLightTheme = isLightTheme
+                )
             }
         }
 

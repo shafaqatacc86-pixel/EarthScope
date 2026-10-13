@@ -115,15 +115,14 @@ object AdMobSdkState {
 }
 
 object AdMobConfig {
-    // Live Production Mode enabled with real AdMob IDs on physical devices;
-    // automatically avoids emulator AdServices / MESA rendernode errors on virtual devices
+    // Official Google AdMob Test Mode Enabled
     const val IS_DUMMY_TEST_MODE: Boolean = false
 
-    // 1. Google AdMob App ID (Also placed in AndroidManifest.xml)
-    const val ADMOB_APP_ID: String = "ca-app-pub-9038493214458444~4203142842"
+    // 1. Google Official Test AdMob App ID
+    const val ADMOB_APP_ID: String = "ca-app-pub-3940256099942544~3347511713"
 
-    // 2. Banner Ad Unit IDs (Your Real Banner Ad Unit ID)
-    const val BANNER_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/4241529650"
+    // 2. Google Official Test Banner Ad Unit ID
+    const val BANNER_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/6300978111"
     const val BANNER_HOME_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val BANNER_SPEEDOMETER_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val BANNER_COMPASS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
@@ -132,23 +131,23 @@ object AdMobConfig {
     const val BANNER_SAVED_PLACES_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val BANNER_TRIP_HISTORY_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
 
-    // 3. Inline Feed / Card Ad Unit IDs (Uses your Real Banner Ad Unit ID until a dedicated Native ID is added)
+    // 3. Inline Feed / Card Ad Unit IDs
     const val NATIVE_HOME_FEED_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val NATIVE_NEARBY_PLACES_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val NATIVE_COUNTRY_DETAILS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
     const val NATIVE_COUNTRY_ATLAS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
 
-    // 4. Interstitial Full-Screen Ad Unit IDs (Your Real Interstitial Ad Unit ID)
-    const val INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/6288363636"
+    // 4. Google Official Test Interstitial Full-Screen Ad Unit ID
+    const val INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/1033173712"
     const val INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
     const val INTERSTITIAL_PIN_SAVED_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
 
-    // 5. Rewarded & Rewarded Interstitial Ad Unit IDs (Your Real Rewarded Ad Unit IDs)
-    const val REWARDED_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/2681035976"
-    const val REWARDED_INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-9038493214458444/5307199318"
+    // 5. Google Official Test Rewarded & Rewarded Interstitial Ad Unit IDs
+    const val REWARDED_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/5224354917"
+    const val REWARDED_INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/5354046379"
 
-    // 6. App Open Ad Unit ID
-    const val APP_OPEN_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
+    // 6. Google Official Test App Open Ad Unit ID
+    const val APP_OPEN_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/9257399415"
 
     // Frequency Capping Settings (Google Policy Safe)
     const val INTERSTITIAL_CLICK_INTERVAL: Int = 3 // Show every 3rd feature navigation

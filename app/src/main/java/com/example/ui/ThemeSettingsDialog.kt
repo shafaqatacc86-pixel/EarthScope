@@ -9,6 +9,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1195,61 +1196,12 @@ private fun AboutInfoBox(
  */
 @Composable
 fun EarthScopeTransparentLogo(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val cx = size.width / 2f
-        val cy = size.height / 2f
-        val r = size.minDimension * 0.44f
-
-        // Ocean sphere circle (no outer box background)
-        drawCircle(
-            color = Color(0xFF0284C7),
-            radius = r,
-            center = Offset(cx, cy)
-        )
-
-        // Stylized emerald green landmass arcs
-        drawCircle(
-            color = Color(0xFF22C55E),
-            radius = r * 0.55f,
-            center = Offset(cx + r * 0.16f, cy - r * 0.1f)
-        )
-        drawCircle(
-            color = Color(0xFF4ADE80),
-            radius = r * 0.35f,
-            center = Offset(cx - r * 0.32f, cy + r * 0.18f)
-        )
-
-        // Latitude & Longitude lines
-        drawLine(
-            color = Color.White.copy(alpha = 0.45f),
-            start = Offset(cx - r, cy),
-            end = Offset(cx + r, cy),
-            strokeWidth = 2f,
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = Color.White.copy(alpha = 0.45f),
-            start = Offset(cx, cy - r),
-            end = Offset(cx, cy + r),
-            strokeWidth = 2f,
-            cap = StrokeCap.Round
-        )
-
-        // Outer glowing globe ring
-        drawCircle(
-            color = Color(0xFF38BDF8),
-            radius = r,
-            center = Offset(cx, cy),
-            style = Stroke(width = 3f)
-        )
-
-        // Golden pin dot
-        drawCircle(
-            color = Color(0xFFFACC15),
-            radius = r * 0.14f,
-            center = Offset(cx + r * 0.28f, cy - r * 0.32f)
-        )
-    }
+    androidx.compose.foundation.Image(
+        painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.earth_scope_icon_1791783006650),
+        contentDescription = "Earth Scope Logo",
+        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+        modifier = modifier.clip(RoundedCornerShape(12.dp))
+    )
 }
 
 private fun shareEarthScopeApp(context: Context) {

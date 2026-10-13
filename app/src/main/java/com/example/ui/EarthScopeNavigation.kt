@@ -170,16 +170,7 @@ fun EarthScopeAppHost(viewModel: GlobeViewModel) {
     var interstitialTriggerLabel by remember { mutableStateOf("Feature Navigation") }
 
     fun navigateWithOptionalInterstitial(triggerLabel: String, action: () -> Unit) {
-        featureNavigationClickCount += 1
-        val now = System.currentTimeMillis()
-        val cooldownPassed = (now - lastInterstitialShownTimeMs) >= AdMobConfig.INTERSTITIAL_MIN_COOLDOWN_MS
-        if (featureNavigationClickCount % AdMobConfig.INTERSTITIAL_CLICK_INTERVAL == 0 && cooldownPassed) {
-            lastInterstitialShownTimeMs = now
-            interstitialTriggerLabel = triggerLabel
-            pendingInterstitialAction = action
-        } else {
-            action()
-        }
+        action()
     }
 
     val dashboardGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
@@ -720,7 +711,7 @@ fun EarthScopeDashboardScreen(
                 }
             }
 
-            // Modern Visual Feature Grid + Native Ad Card
+            // Modern Visual Feature Grid (Optimized for butter-smooth scrolling)
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Adaptive(minSize = 148.dp),
@@ -731,13 +722,17 @@ fun EarthScopeDashboardScreen(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
+                item(span = { GridItemSpan(maxLineSpan) }, contentType = "hero_banner") {
                     HeroGlobeBannerCard(
                         onOpenGlobe = { onNavigate(EarthScopeDestination.WORLD_GLOBE) }
                     )
                 }
 
-                items(features.take(4), key = { it.id }) { item ->
+                items(
+                    items = features.take(4),
+                    key = { it.id },
+                    contentType = { "feature_card" }
+                ) { item ->
                     FeatureCategoryCard(
                         item = item,
                         cardBg = cardBg,
@@ -755,16 +750,11 @@ fun EarthScopeDashboardScreen(
                     )
                 }
 
-                // Native Ad Card inside Home Screen Feature Grid
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    AdMobNativeAdCard(
-                        placementName = "Home_Dashboard_Feed",
-                        adUnitId = AdMobConfig.NATIVE_HOME_FEED_AD_UNIT_ID,
-                        isLightTheme = isLightTheme
-                    )
-                }
-
-                items(features.drop(4), key = { it.id }) { item ->
+                items(
+                    items = features.drop(4),
+                    key = { it.id },
+                    contentType = { "feature_card" }
+                ) { item ->
                     FeatureCategoryCard(
                         item = item,
                         cardBg = cardBg,

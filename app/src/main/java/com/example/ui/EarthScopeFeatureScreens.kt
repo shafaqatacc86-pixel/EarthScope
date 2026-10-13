@@ -1112,29 +1112,27 @@ fun InteractiveMapPageScreen(
             .build()
     }
 
-    // Continuously project the active marker's LatLng to screen pixel coordinates on every frame (60fps)
-    // when GoogleMap is active so the Speech-Bubble Info Window stays 100% locked to its marker
-    // and never drifts or lags behind when the user pans, flings, or zooms the map!
-    LaunchedEffect(
-        activeFloatingWindowPin,
-        hasValidGoogleKey
-    ) {
-        if (hasValidGoogleKey) {
-            val pin = activeFloatingWindowPin
-            if (pin != null) {
-                val targetLatLng = LatLng(pin.latitude, pin.longitude)
-                while (true) {
-                    val pt = cameraPositionState.projection?.toScreenLocation(targetLatLng)
-                    if (pt != null) {
+    // Project the active marker's LatLng to screen pixel coordinates efficiently
+    // when camera moves or active marker changes, eliminating the 60fps infinite loop
+    // that was choking the main thread and causing tap delays!
+    LaunchedEffect(activeFloatingWindowPin, hasValidGoogleKey) {
+        val pin = activeFloatingWindowPin
+        if (hasValidGoogleKey && pin != null) {
+            val targetLatLng = LatLng(pin.latitude, pin.longitude)
+            cameraPositionState.projection?.toScreenLocation(targetLatLng)?.let { pt ->
+                activeMarkerScreenX = pt.x.toFloat()
+                activeMarkerScreenY = pt.y.toFloat()
+            }
+            androidx.compose.runtime.snapshotFlow { cameraPositionState.position }
+                .collect {
+                    cameraPositionState.projection?.toScreenLocation(targetLatLng)?.let { pt ->
                         activeMarkerScreenX = pt.x.toFloat()
                         activeMarkerScreenY = pt.y.toFloat()
                     }
-                    androidx.compose.runtime.withFrameNanos { }
                 }
-            } else {
-                activeMarkerScreenX = null
-                activeMarkerScreenY = null
-            }
+        } else {
+            activeMarkerScreenX = null
+            activeMarkerScreenY = null
         }
     }
 
