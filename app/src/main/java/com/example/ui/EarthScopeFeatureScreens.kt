@@ -25,12 +25,6 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.view.ViewGroup
-import android.webkit.JavascriptInterface
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -1057,44 +1051,9 @@ fun InteractiveMapPageScreen(
         }
     }
 
-    val configuredMapsKey = BuildConfig.MAPS_API_KEY
-    val hasValidGoogleKey = configuredMapsKey.isNotBlank() &&
-            configuredMapsKey != "YOUR_GOOGLE_MAPS_API_KEY" &&
-            configuredMapsKey != "DEFAULT_VALUE"
 
-    val webViewRef = remember { mutableStateOf<WebView?>(null) }
-    var isWebViewLoaded by remember { mutableStateOf(false) }
 
-    // Sync saved pins to Leaflet WebView whenever filteredSavedPins or activeFloatingWindowPin changes
-    fun syncPinsToWebView() {
-        val wv = webViewRef.value ?: return
-        if (!isWebViewLoaded) return
-        val jsonArrayStr = filteredSavedPins.joinToString(prefix = "[", postfix = "]") { pin ->
-            val cat = PinLocationCategory.fromKey(pin.categoryKey)
-            val markerOpt = CustomMapMarkerOption.fromKey(pin.markerStyleKey)
-            val safeName = pin.locationName
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", " ")
-            val safeCatLabel = cat.label
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-            val coordsStr = String.format(Locale.US, "%.4f°, %.4f°", pin.latitude, pin.longitude)
-            val thumbDataUrl = rememberOrEncodeThumbDataUrl(pin.primaryImagePath)
-            """{"id":${pin.id},"lat":${pin.latitude},"lon":${pin.longitude},"name":"$safeName","catLabel":"$safeCatLabel","catColor":"${cat.hexColor}","coords":"$coordsStr","color":"${markerOpt.hexColor}","emoji":"${cat.emoji}","symbol":"${markerOpt.badgeSymbol}","thumb":"$thumbDataUrl"}"""
-        }
-        val activeId = activeFloatingWindowPin?.id ?: -1L
-        wv.evaluateJavascript(
-            "if(window.renderSavedPins){ window.renderSavedPins($jsonArrayStr, $activeId); }",
-            null
-        )
-    }
 
-    LaunchedEffect(filteredSavedPins, activeFloatingWindowPin, isWebViewLoaded) {
-        if (!hasValidGoogleKey && isWebViewLoaded) {
-            syncPinsToWebView()
-        }
-    }
 
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -1115,9 +1074,9 @@ fun InteractiveMapPageScreen(
     // Project the active marker's LatLng to screen pixel coordinates efficiently
     // when camera moves or active marker changes, eliminating the 60fps infinite loop
     // that was choking the main thread and causing tap delays!
-    LaunchedEffect(activeFloatingWindowPin, hasValidGoogleKey) {
+    LaunchedEffect(activeFloatingWindowPin) {
         val pin = activeFloatingWindowPin
-        if (hasValidGoogleKey && pin != null) {
+        if (pin != null) {
             val targetLatLng = LatLng(pin.latitude, pin.longitude)
             cameraPositionState.projection?.toScreenLocation(targetLatLng)?.let { pt ->
                 activeMarkerScreenX = pt.x.toFloat()
@@ -1141,25 +1100,17 @@ fun InteractiveMapPageScreen(
         targetLon = lon
         targetZoom = zoom
         targetLabel = label
-        if (hasValidGoogleKey) {
-            coroutineScope.launch {
-                cameraPositionState.animate(
-                    update = CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.Builder()
-                            .target(LatLng(lat, lon))
-                            .zoom(zoom.toFloat())
-                            .bearing(bearing)
-                            .tilt(if (zoom >= 15) 50f else 30f)
-                            .build()
-                    ),
-                    durationMs = 650
-                )
-            }
-        } else {
-            val safe = label.replace("'", "\\'")
-            webViewRef.value?.evaluateJavascript(
-                "if(window.flyToLocation){ window.flyToLocation($lat, $lon, $zoom, '$safe'); }",
-                null
+        coroutineScope.launch {
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(LatLng(lat, lon))
+                        .zoom(zoom.toFloat())
+                        .bearing(bearing)
+                        .tilt(if (zoom >= 15) 50f else 30f)
+                        .build()
+                ),
+                durationMs = 650
             )
         }
     }
@@ -1386,12 +1337,6 @@ fun InteractiveMapPageScreen(
                             modifier = Modifier
                                 .clickable {
                                     isMeasureMode = !isMeasureMode
-                                    if (!hasValidGoogleKey) {
-                                        webViewRef.value?.evaluateJavascript(
-                                            "if(window.setMeasureMode){ window.setMeasureMode($isMeasureMode); }",
-                                            null
-                                        )
-                                    }
                                 }
                                 .testTag("map_measure_mode_toggle")
                         ) {
@@ -1439,12 +1384,6 @@ fun InteractiveMapPageScreen(
                             modifier = Modifier
                                 .clickable {
                                     mapLayerMode = (mapLayerMode + 1) % 5
-                                    if (!hasValidGoogleKey) {
-                                        webViewRef.value?.evaluateJavascript(
-                                            "if(window.setMapLayer){ window.setMapLayer($mapLayerMode); }",
-                                            null
-                                        )
-                                    }
                                 }
                                 .testTag("map_page_layer_switch")
                         ) {
@@ -1462,8 +1401,7 @@ fun InteractiveMapPageScreen(
             )
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                if (hasValidGoogleKey) {
-                    val googleMapType = when (mapLayerMode) {
+                val googleMapType = when (mapLayerMode) {
                         1 -> MapType.HYBRID
                         2 -> MapType.TERRAIN
                         else -> MapType.NORMAL
@@ -1650,120 +1588,6 @@ fun InteractiveMapPageScreen(
                             }
                         }
                     }
-                } else {
-                    AndroidView(
-                        modifier = Modifier.fillMaxSize(),
-                        factory = { ctx ->
-                            WebView(ctx).apply {
-                                if (AdMobSdkState.isRunningOnEmulator()) {
-                                    setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
-                                }
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                                settings.apply {
-                                    javaScriptEnabled = true
-                                    domStorageEnabled = true
-                                    databaseEnabled = true
-                                    cacheMode = WebSettings.LOAD_DEFAULT
-                                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                                }
-                                addJavascriptInterface(
-                                    object {
-                                        @JavascriptInterface
-                                        fun onNormalMapTap(lat: Double, lon: Double) {
-                                            coroutineScope.launch {
-                                                focusManager.clearFocus()
-                                                if (isPickingCustomMapPointForFloatingPin) {
-                                                    isPickingCustomMapPointForFloatingPin = false
-                                                    targetLat = lat
-                                                    targetLon = lon
-                                                    openFormDialogForCoordinates(lat, lon, "CUSTOM")
-                                                } else {
-                                                    activeFloatingWindowPin = null
-                                                    showBottomQuickSaveSheet = false
-                                                }
-                                            }
-                                        }
-
-                                        @JavascriptInterface
-                                        fun onSavedMarkerClicked(pinId: Long, screenX: Float, screenY: Float) {
-                                            coroutineScope.launch {
-                                                val found = savedFloatingPins.find { it.id == pinId }
-                                                if (found != null) {
-                                                    val d = context.resources.displayMetrics.density
-                                                    activeMarkerScreenX = screenX * d
-                                                    activeMarkerScreenY = screenY * d
-                                                    activeFloatingWindowPin = found
-                                                    targetLat = found.latitude
-                                                    targetLon = found.longitude
-                                                    targetLabel = found.locationName
-                                                }
-                                            }
-                                        }
-
-                                        @JavascriptInterface
-                                        fun onOpenPinDetailsFromBubble(pinId: Long) {
-                                            coroutineScope.launch {
-                                                val found = savedFloatingPins.find { it.id == pinId }
-                                                if (found != null) {
-                                                    selectedPinForDetailsPage = found
-                                                }
-                                            }
-                                        }
-
-                                        @JavascriptInterface
-                                        fun onCloseActiveBubble() {
-                                            coroutineScope.launch {
-                                                activeFloatingWindowPin = null
-                                            }
-                                        }
-
-                                        @JavascriptInterface
-                                        fun onActiveMarkerPositionUpdated(screenX: Float, screenY: Float) {
-                                            coroutineScope.launch {
-                                                val d = context.resources.displayMetrics.density
-                                                activeMarkerScreenX = screenX * d
-                                                activeMarkerScreenY = screenY * d
-                                            }
-                                        }
-
-                                        @JavascriptInterface
-                                        fun onMeasureUpdated(lat1: Double, lon1: Double, lat2: Double, lon2: Double) {
-                                            coroutineScope.launch {
-                                                measurePoints.clear()
-                                                measurePoints.add(LatLng(lat1, lon1))
-                                                measurePoints.add(LatLng(lat2, lon2))
-                                            }
-                                        }
-                                    },
-                                    "AndroidMapBridge"
-                                )
-                                webChromeClient = WebChromeClient()
-                                webViewClient = object : WebViewClient() {
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        super.onPageFinished(view, url)
-                                        isWebViewLoaded = true
-                                        view?.evaluateJavascript(
-                                            "if(window.setMapLayer){ window.setMapLayer($mapLayerMode); }",
-                                            null
-                                        )
-                                        syncPinsToWebView()
-                                    }
-                                }
-                                loadDataWithBaseURL(
-                                    "https://earthscope.local/",
-                                    buildDedicatedMapHtml(targetLat, targetLon, targetZoom, isMeasureMode),
-                                    "text/html",
-                                    "UTF-8",
-                                    null
-                                )
-                                webViewRef.value = this
-                            }
-                        }
-                    )
-                }
 
                 // ===============================================================
                 // SLEEK, COMPACT, RESPONSIVE TOP SEARCH BAR + SEARCH ICON BUTTON
@@ -1996,7 +1820,6 @@ fun InteractiveMapPageScreen(
                                 TextButton(
                                     onClick = {
                                         measurePoints.clear()
-                                        webViewRef.value?.evaluateJavascript("if(window.clearMeasurement){ window.clearMeasurement(); }", null)
                                     }
                                 ) {
                                     Text("Clear", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold, fontSize = 11.sp)
@@ -2132,11 +1955,7 @@ fun InteractiveMapPageScreen(
                         tag = "map_rotate_button",
                         onClick = {
                             mapBearingDeg = (mapBearingDeg + 45f) % 360f
-                            if (hasValidGoogleKey) {
-                                flyMapTo(targetLat, targetLon, targetZoom, targetLabel, mapBearingDeg)
-                            } else {
-                                Toast.makeText(context, "Map Heading: ${mapBearingDeg.roundToInt()}°", Toast.LENGTH_SHORT).show()
-                            }
+                            flyMapTo(targetLat, targetLon, targetZoom, targetLabel, mapBearingDeg)
                         }
                     )
                 }
@@ -2394,10 +2213,6 @@ fun InteractiveMapPageScreen(
             }
         )
     }
-
-    DisposableEffect(Unit) {
-        onDispose { webViewRef.value?.destroy() }
-    }
 }
 
 @Composable
@@ -2518,411 +2333,6 @@ private fun rememberOrEncodeThumbDataUrl(filePath: String?): String {
     }
 }
 
-private fun buildDedicatedMapHtml(
-    initLat: Double,
-    initLon: Double,
-    initZoom: Int,
-    initMeasureMode: Boolean
-): String {
-    return """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; transition: background 0.2s ease; }
-        /* Mode 0: White Map (Clean Bright Look) */
-        body.map-mode-white #map { background: #f8fafc; }
-        body.map-mode-white .leaflet-tile-pane { filter: brightness(1.03) contrast(0.98); }
-
-        /* Mode 1: Black Map (Deep Dark Mode) */
-        body.map-mode-black #map { background: #070d19; }
-        body.map-mode-black .leaflet-tile-pane { filter: brightness(0.95) contrast(1.12); }
-
-        /* Mode 2: Green Map (Vibrant Green Land + Deep Royal Blue Water + White Roads & Red Shields) */
-        body.map-mode-green #map { background: #1d63dc; }
-        body.map-mode-green .leaflet-tile-pane {
-            filter: url(#green-map-color-filter);
-        }
-
-        /* =====================================================================
-           CUSTOM USER MARKER (ROUND BADGE ON THE EXACT LOCATION)
-           + SINGLE SPEECH-BUBBLE 💬 INFO WINDOW LOCKED DIRECTLY TO THE MARKER
-           Moves 100% locked with the map & marker at 60fps — NEVER lags or drifts!
-           ===================================================================== */
-        .custom-pin-container {
-            position: relative;
-            width: 52px;
-            height: 52px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .custom-pin-ground-pulse {
-            position: absolute;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            opacity: 0.28;
-            pointer-events: none;
-        }
-        .custom-pin-badge {
-            position: relative;
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            border: 3.5px solid #ffffff;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.45);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 3;
-            cursor: pointer;
-            transition: transform 0.18s ease;
-        }
-        .custom-pin-badge.selected {
-            transform: scale(1.12);
-            box-shadow: 0 0 0 3px rgba(255,255,255,0.92), 0 6px 16px rgba(15, 23, 42, 0.55);
-        }
-        .custom-pin-inner {
-            width: 28px;
-            height: 28px;
-            background: #ffffff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            line-height: 1;
-        }
-
-        /* Speech-Bubble 💬 Info Window anchored directly above the marker inside the map layer */
-        .pin-speech-bubble-wrap {
-            position: absolute;
-            bottom: 54px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 218px;
-            z-index: 20;
-            filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.32));
-            pointer-events: auto;
-        }
-        .pin-speech-bubble-card {
-            background: #ffffff;
-            border-radius: 16px;
-            border: 2px solid #10b981;
-            padding: 9px 10px;
-            cursor: pointer;
-        }
-        .bubble-top-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 6px;
-        }
-        .bubble-cat-group {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            min-width: 0;
-        }
-        .bubble-dot-icon {
-            width: 19px;
-            height: 19px;
-            border-radius: 50%;
-            color: #ffffff;
-            font-size: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .bubble-cat-pill {
-            font-size: 9.5px;
-            font-weight: 800;
-            padding: 2px 6px;
-            border-radius: 6px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .bubble-close-btn {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: none;
-            background: #f1f5f9;
-            color: #64748b;
-            font-size: 13px;
-            font-weight: bold;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            padding: 0;
-            flex-shrink: 0;
-        }
-        .bubble-main-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .bubble-thumb {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            object-fit: cover;
-            flex-shrink: 0;
-            background: #f1f5f9;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-        .bubble-info-col {
-            flex: 1;
-            min-width: 0;
-        }
-        .bubble-title {
-            font-size: 12.5px;
-            font-weight: 800;
-            color: #0f172a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
-        }
-        .bubble-coords {
-            font-size: 9.5px;
-            font-weight: 700;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .bubble-eye-badge {
-            width: 25px;
-            height: 25px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            flex-shrink: 0;
-        }
-        /* Single Speech-Bubble 💬 Pointer Triangle between Info Window and Marker */
-        .bubble-tail-outer {
-            width: 0;
-            height: 0;
-            border-left: 11px solid transparent;
-            border-right: 11px solid transparent;
-            border-top: 13px solid #10b981;
-            margin: 0 auto;
-            position: relative;
-        }
-        .bubble-tail-inner {
-            position: absolute;
-            top: -15px;
-            left: -9px;
-            width: 0;
-            height: 0;
-            border-left: 9px solid transparent;
-            border-right: 9px solid transparent;
-            border-top: 11px solid #ffffff;
-        }
-    </style>
-</head>
-<body class="map-mode-white">
-    <!-- Precision SVG Color Filter for Green Map:
-         Turns OSM cream/grey land into vivid lime-emerald green (#24C848),
-         turns light blue water into rich royal blue (#1D63DC),
-         keeps roads crisp white and highway shields bold red -->
-    <svg width="0" height="0" style="position:absolute;z-index:-1;">
-        <defs>
-            <filter id="green-map-color-filter" color-interpolation-filters="sRGB">
-                <feColorMatrix type="matrix" values="
-                    0.95  0.10 -0.90  0.00  0.00
-                    0.10  1.45 -0.45  0.00  0.02
-                   -0.75 -0.25  1.95  0.00  0.00
-                    0.00  0.00  0.00  1.00  0.00" />
-                <feComponentTransfer>
-                    <feFuncR type="gamma" amplitude="1.05" exponent="1.15" offset="-0.02" />
-                    <feFuncG type="gamma" amplitude="1.12" exponent="0.88" offset="0.02" />
-                    <feFuncB type="gamma" amplitude="1.08" exponent="1.02" offset="0.00" />
-                </feComponentTransfer>
-            </filter>
-        </defs>
-    </svg>
-    <div id="map"></div>
-    <script>
-        var whiteTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
-        var blackTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
-        var greenBaseTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
-        var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-        var labels = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-        var topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 });
-
-        var map = L.map('map', { center: [$initLat, $initLon], zoom: $initZoom, zoomControl: false, layers: [whiteTiles] });
-        var savedPinsLayer = L.layerGroup().addTo(map);
-        var activePinLatLng = null;
-
-        var measureMode = $initMeasureMode;
-        var measurePts = [];
-        var measureLine = null;
-
-        window.onOpenBubbleDetails = function(ev, pinId) {
-            if (ev) {
-                ev.stopPropagation();
-                ev.preventDefault();
-            }
-            if (window.AndroidMapBridge && window.AndroidMapBridge.onOpenPinDetailsFromBubble) {
-                window.AndroidMapBridge.onOpenPinDetailsFromBubble(pinId);
-            }
-        };
-
-        window.onCloseBubbleCard = function(ev) {
-            if (ev) {
-                ev.stopPropagation();
-                ev.preventDefault();
-            }
-            activePinLatLng = null;
-            if (window.AndroidMapBridge && window.AndroidMapBridge.onCloseActiveBubble) {
-                window.AndroidMapBridge.onCloseActiveBubble();
-            }
-        };
-
-        map.on('click', function(e) {
-            if (measureMode) {
-                measurePts.push([e.latlng.lat, e.latlng.lng]);
-                if (measureLine) map.removeLayer(measureLine);
-                if (measurePts.length >= 2) {
-                    measureLine = L.polyline(measurePts, { color: '#f59e0b', weight: 4 }).addTo(map);
-                    var p1 = measurePts[measurePts.length - 2];
-                    var p2 = measurePts[measurePts.length - 1];
-                    if (window.AndroidMapBridge && window.AndroidMapBridge.onMeasureUpdated) {
-                        window.AndroidMapBridge.onMeasureUpdated(p1[0], p1[1], p2[0], p2[1]);
-                    }
-                }
-            } else {
-                // Normal map tap: do NOT add marker; notify Android to hide floating window or pick custom point if active
-                activePinLatLng = null;
-                if (window.AndroidMapBridge && window.AndroidMapBridge.onNormalMapTap) {
-                    window.AndroidMapBridge.onNormalMapTap(e.latlng.lat, e.latlng.lng);
-                }
-            }
-        });
-
-        window.renderSavedPins = function(pinsArray, activeId) {
-            savedPinsLayer.clearLayers();
-            activePinLatLng = null;
-            if (!pinsArray) return;
-            pinsArray.forEach(function(p) {
-                var isSelected = (p.id === activeId);
-                var bubbleHtml = '';
-                if (isSelected) {
-                    var thumbEl = (p.thumb && p.thumb.length > 10)
-                        ? '<img class="bubble-thumb" src="' + p.thumb + '" />'
-                        : '<div class="bubble-thumb" style="background:' + p.color + '22; color:' + p.color + ';">' + (p.emoji || '📍') + '</div>';
-                    var pinSvg = '<svg width="11" height="11" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
-                    bubbleHtml =
-                        '<div class="pin-speech-bubble-wrap" onclick="window.onOpenBubbleDetails(event, ' + p.id + ')">' +
-                            '<div class="pin-speech-bubble-card" style="border-color:' + p.color + ';">' +
-                                '<div class="bubble-top-row">' +
-                                    '<div class="bubble-cat-group">' +
-                                        '<div class="bubble-dot-icon" style="background:' + p.color + ';">' + pinSvg + '</div>' +
-                                        '<div class="bubble-cat-pill" style="background:' + (p.catColor || p.color) + '24; color:' + (p.catColor || p.color) + ';">' + (p.emoji || '') + ' ' + (p.catLabel || 'Saved') + '</div>' +
-                                    '</div>' +
-                                    '<button class="bubble-close-btn" onclick="window.onCloseBubbleCard(event)">✕</button>' +
-                                '</div>' +
-                                '<div class="bubble-main-row">' +
-                                    thumbEl +
-                                    '<div class="bubble-info-col">' +
-                                        '<div class="bubble-title">' + (p.name || 'Saved Pin') + '</div>' +
-                                        '<div class="bubble-coords" style="color:' + p.color + ';">' + (p.coords || '') + '</div>' +
-                                    '</div>' +
-                                '</div>' +
-                            '</div>' +
-                            '<div class="bubble-tail-outer" style="border-top-color:' + p.color + ';"><div class="bubble-tail-inner"></div></div>' +
-                        '</div>';
-                }
-
-                var html =
-                    '<div class="custom-pin-container">' +
-                        bubbleHtml +
-                        '<div class="custom-pin-ground-pulse" style="background:' + p.color + ';"></div>' +
-                        '<div class="custom-pin-badge ' + (isSelected ? 'selected' : '') + '" style="background:' + p.color + ';">' +
-                            '<div class="custom-pin-inner">' + (p.emoji || p.symbol || '📍') + '</div>' +
-                        '</div>' +
-                    '</div>';
-
-                var customIcon = L.divIcon({
-                    className: '',
-                    html: html,
-                    iconSize: [52, 52],
-                    iconAnchor: [26, 26]
-                });
-                var m = L.marker([p.lat, p.lon], {
-                    icon: customIcon,
-                    zIndexOffset: isSelected ? 1000 : 0
-                }).addTo(savedPinsLayer);
-                if (isSelected) {
-                    activePinLatLng = L.latLng(p.lat, p.lon);
-                }
-                m.on('click', function(ev) {
-                    L.DomEvent.stopPropagation(ev);
-                    activePinLatLng = L.latLng(p.lat, p.lon);
-                    var pt = map.latLngToContainerPoint(activePinLatLng);
-                    if (window.AndroidMapBridge && window.AndroidMapBridge.onSavedMarkerClicked) {
-                        window.AndroidMapBridge.onSavedMarkerClicked(p.id, pt.x, pt.y);
-                    }
-                });
-            });
-        };
-
-        window.setMeasureMode = function(enabled) {
-            measureMode = enabled;
-        };
-
-        window.clearMeasurement = function() {
-            measurePts = [];
-            if (measureLine) { map.removeLayer(measureLine); measureLine = null; }
-        };
-
-        window.setMapLayer = function(mode) {
-            document.body.className = '';
-            map.eachLayer(function(l) {
-                if (l !== savedPinsLayer && l !== measureLine) map.removeLayer(l);
-            });
-            if (mode === 1) {
-                sat.addTo(map);
-                labels.addTo(map);
-            } else if (mode === 2) {
-                topo.addTo(map);
-            } else if (mode === 3) {
-                document.body.className = 'map-mode-black';
-                blackTiles.addTo(map);
-            } else if (mode === 4) {
-                document.body.className = 'map-mode-green';
-                greenBaseTiles.addTo(map);
-            } else {
-                document.body.className = 'map-mode-white';
-                whiteTiles.addTo(map);
-            }
-            savedPinsLayer.addTo(map);
-        };
-
-        window.flyToLocation = function(lat, lon, zoom, label) {
-            map.flyTo([lat, lon], zoom, { duration: 0.65 });
-        };
-    </script>
-</body>
-</html>
-    """.trimIndent()
-}
 
 /**
  * ============================================================================

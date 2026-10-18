@@ -2,11 +2,6 @@ package com.example.ui
 
 import android.annotation.SuppressLint
 import android.view.MotionEvent
-import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -787,11 +782,6 @@ private fun CountryInteractiveRealGoogleMapCard(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val configuredMapsKey = BuildConfig.MAPS_API_KEY
-    val hasValidGoogleKey = configuredMapsKey.isNotBlank() &&
-            configuredMapsKey != "YOUR_GOOGLE_MAPS_API_KEY" &&
-            configuredMapsKey != "DEFAULT_VALUE"
-
     val defaultZoom = remember(country.id) { idealCountryZoomLevel(country.areaKm2) }
     var targetLat by remember(country.id) { mutableDoubleStateOf(country.centerLat) }
     var targetLon by remember(country.id) { mutableDoubleStateOf(country.centerLon) }
@@ -799,9 +789,6 @@ private fun CountryInteractiveRealGoogleMapCard(
     var mapBearingDeg by remember(country.id) { mutableFloatStateOf(0f) }
     var mapLayerMode by remember { mutableIntStateOf(1) } // 0=Normal, 1=Satellite, 2=Terrain, 3=Black, 4=Green
     var showCountryStructures by remember { mutableStateOf(true) }
-
-    val webViewRef = remember { mutableStateOf<WebView?>(null) }
-    var isWebViewLoaded by remember { mutableStateOf(false) }
 
     val cameraPositionState = rememberCameraPositionState(country.id) {
         position = CameraPosition.Builder()
@@ -817,38 +804,17 @@ private fun CountryInteractiveRealGoogleMapCard(
         targetLon = lon
         currentZoom = zoom
         mapBearingDeg = ((bearing % 360f) + 360f) % 360f
-        if (hasValidGoogleKey) {
-            coroutineScope.launch {
-                cameraPositionState.animate(
-                    update = CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.Builder()
-                            .target(LatLng(lat, lon))
-                            .zoom(zoom.toFloat())
-                            .bearing(mapBearingDeg)
-                            .tilt(0f)
-                            .build()
-                    ),
-                    durationMs = 450
-                )
-            }
-        } else {
-            webViewRef.value?.evaluateJavascript(
-                "if(window.flyCountryMap){ window.flyCountryMap($lat, $lon, $zoom, $mapBearingDeg); }",
-                null
-            )
-        }
-    }
-
-    // Build JSON payload of ONLY the selected country highlight structure for WebView
-    val structuresJson = remember(country.id, showCountryStructures) {
-        buildCountryAndNeighborsJson(country, emptyList(), showCountryStructures)
-    }
-
-    LaunchedEffect(country.id, structuresJson, isWebViewLoaded) {
-        if (!hasValidGoogleKey && isWebViewLoaded) {
-            webViewRef.value?.evaluateJavascript(
-                "if(window.renderCountryStructures){ window.renderCountryStructures($structuresJson); }",
-                null
+        coroutineScope.launch {
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(LatLng(lat, lon))
+                        .zoom(zoom.toFloat())
+                        .bearing(mapBearingDeg)
+                        .tilt(0f)
+                        .build()
+                ),
+                durationMs = 450
             )
         }
     }
@@ -856,7 +822,6 @@ private fun CountryInteractiveRealGoogleMapCard(
     DisposableEffect(Unit) {
         onDispose {
             onMapTouchActiveChanged(false)
-            webViewRef.value?.destroy()
         }
     }
 
@@ -928,12 +893,6 @@ private fun CountryInteractiveRealGoogleMapCard(
                     modifier = Modifier
                         .clickable {
                             mapLayerMode = (mapLayerMode + 1) % 5
-                            if (!hasValidGoogleKey) {
-                                webViewRef.value?.evaluateJavascript(
-                                    "if(window.setCountryMapLayer){ window.setCountryMapLayer($mapLayerMode); }",
-                                    null
-                                )
-                            }
                         }
                         .testTag("country_detail_map_layer_switch")
                 ) {
@@ -1050,7 +1009,6 @@ private fun CountryInteractiveRealGoogleMapCard(
                         }
                     }
             ) {
-                if (hasValidGoogleKey) {
                     val googleMapType = when (mapLayerMode) {
                         1 -> MapType.HYBRID
                         2 -> MapType.TERRAIN
@@ -1122,77 +1080,6 @@ private fun CountryInteractiveRealGoogleMapCard(
                             snippet = "Capital: ${country.capital}"
                         )
                     }
-                } else {
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .testTag("country_detail_webview_map"),
-                        factory = { ctx ->
-                            WebView(ctx).apply {
-                                if (AdMobSdkState.isRunningOnEmulator()) {
-                                    setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
-                                }
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                                isFocusable = true
-                                isFocusableInTouchMode = true
-                                setOnTouchListener { v, event ->
-                                    when (event.actionMasked) {
-                                        MotionEvent.ACTION_DOWN,
-                                        MotionEvent.ACTION_MOVE,
-                                        MotionEvent.ACTION_POINTER_DOWN -> {
-                                            onMapTouchActiveChanged(true)
-                                            v.parent?.requestDisallowInterceptTouchEvent(true)
-                                        }
-                                        MotionEvent.ACTION_UP,
-                                        MotionEvent.ACTION_CANCEL -> {
-                                            onMapTouchActiveChanged(false)
-                                            v.parent?.requestDisallowInterceptTouchEvent(false)
-                                        }
-                                    }
-                                    false
-                                }
-                                settings.apply {
-                                    javaScriptEnabled = true
-                                    domStorageEnabled = true
-                                    databaseEnabled = true
-                                    cacheMode = WebSettings.LOAD_DEFAULT
-                                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                                }
-                                webChromeClient = WebChromeClient()
-                                webViewClient = object : WebViewClient() {
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        super.onPageFinished(view, url)
-                                        isWebViewLoaded = true
-                                        view?.evaluateJavascript(
-                                            "if(window.setCountryMapLayer){ window.setCountryMapLayer($mapLayerMode); }",
-                                            null
-                                        )
-                                        view?.evaluateJavascript(
-                                            "if(window.renderCountryStructures){ window.renderCountryStructures($structuresJson); }",
-                                            null
-                                        )
-                                    }
-                                }
-                                loadDataWithBaseURL(
-                                    "https://earthscope.local/",
-                                    buildCountryDetailInteractiveMapHtml(
-                                        initLat = country.centerLat,
-                                        initLon = country.centerLon,
-                                        initZoom = defaultZoom,
-                                        initLayerMode = mapLayerMode
-                                    ),
-                                    "text/html",
-                                    "UTF-8",
-                                    null
-                                )
-                                webViewRef.value = this
-                            }
-                        }
-                    )
-                }
             }
         }
     }
@@ -1623,158 +1510,8 @@ private fun CountryMiniMapBoxCard(
     }
 }
 
-private fun buildCountryAndNeighborsJson(
-    country: CountryInfo,
-    neighbors: List<CountryInfo>,
-    showStructures: Boolean
-): String {
-    fun escapeJs(s: String): String = s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")
-    fun polyJson(pts: List<GeoPoint>): String =
-        pts.joinToString(prefix = "[", postfix = "]") { "[${it.lat},${it.lon}]" }
 
-    val mainPoly = polyJson(getCountryStructurePolygon(country))
-    val neighborsJson = neighbors.joinToString(prefix = "[", postfix = "]") { nb ->
-        val nbPoly = polyJson(getCountryStructurePolygon(nb))
-        """{"id":"${escapeJs(nb.id)}","name":"${escapeJs(nb.name)}","capital":"${escapeJs(nb.capital)}","flag":"${escapeJs(nb.flagEmoji)}","centerLat":${nb.centerLat},"centerLon":${nb.centerLon},"capitalLat":${nb.capitalLat},"capitalLon":${nb.capitalLon},"poly":$nbPoly}"""
-    }
 
-    return """{"showStructures":$showStructures,"main":{"id":"${escapeJs(country.id)}","name":"${escapeJs(country.name)}","capital":"${escapeJs(country.capital)}","flag":"${escapeJs(country.flagEmoji)}","centerLat":${country.centerLat},"centerLon":${country.centerLon},"capitalLat":${country.capitalLat},"capitalLon":${country.capitalLon},"poly":$mainPoly},"neighbors":$neighborsJson}"""
-}
-
-private fun buildCountryDetailInteractiveMapHtml(
-    initLat: Double,
-    initLon: Double,
-    initZoom: Int,
-    initLayerMode: Int
-): String {
-    return """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body, #map {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background: #070d19;
-            touch-action: none;
-        }
-        body.map-mode-white #map { background: #f8fafc; }
-        body.map-mode-black #map { background: #070d19; }
-        body.map-mode-green #map { background: #1d63dc; }
-        body.map-mode-green .leaflet-tile-pane {
-            filter: url(#green-map-color-filter);
-        }
-        .country-badge-label {
-            background: rgba(15, 23, 42, 0.88);
-            color: #ffffff;
-            border: 1.5px solid #22c55e;
-            border-radius: 12px;
-            padding: 3px 8px;
-            font-family: sans-serif;
-            font-size: 11px;
-            font-weight: bold;
-            white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.45);
-            pointer-events: none;
-        }
-    </style>
-</head>
-<body class="map-mode-white">
-    <svg width="0" height="0" style="position:absolute;z-index:-1;">
-        <defs>
-            <filter id="green-map-color-filter" color-interpolation-filters="sRGB">
-                <feColorMatrix type="matrix" values="
-                    0.95  0.10 -0.90  0.00  0.00
-                    0.10  1.45 -0.45  0.00  0.02
-                   -0.75 -0.25  1.95  0.00  0.00
-                    0.00  0.00  0.00  1.00  0.00" />
-            </filter>
-        </defs>
-    </svg>
-    <div id="map"></div>
-    <script>
-        var googleRoad = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
-        var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20 });
-        var googleTerrain = L.tileLayer('https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', { maxZoom: 20 });
-        var blackTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
-        var greenBaseTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
-
-        var map = L.map('map', {
-            center: [$initLat, $initLon],
-            zoom: $initZoom,
-            zoomControl: false,
-            attributionControl: false,
-            dragging: true,
-            inertia: true,
-            touchZoom: true,
-            doubleClickZoom: true,
-            scrollWheelZoom: true,
-            tap: false,
-            layers: [googleHybrid]
-        });
-
-        var structuresLayer = L.layerGroup().addTo(map);
-
-        window.setCountryMapLayer = function(mode) {
-            document.body.className = '';
-            map.eachLayer(function(l) {
-                if (l !== structuresLayer) map.removeLayer(l);
-            });
-            if (mode === 1) {
-                googleHybrid.addTo(map);
-            } else if (mode === 2) {
-                googleTerrain.addTo(map);
-            } else if (mode === 3) {
-                document.body.className = 'map-mode-black';
-                blackTiles.addTo(map);
-            } else if (mode === 4) {
-                document.body.className = 'map-mode-green';
-                greenBaseTiles.addTo(map);
-            } else {
-                document.body.className = 'map-mode-white';
-                googleRoad.addTo(map);
-            }
-            structuresLayer.addTo(map);
-        };
-
-        window.flyCountryMap = function(lat, lon, zoom, bearingDeg) {
-            map.flyTo([lat, lon], zoom, { duration: 0.45 });
-        };
-
-        window.renderCountryStructures = function(data) {
-            structuresLayer.clearLayers();
-            if (!data) return;
-            var m = data.main;
-            if (data.showStructures && m && m.poly && m.poly.length >= 3) {
-                L.polygon(m.poly, {
-                    color: '#22c55e',
-                    weight: 3.5,
-                    fillColor: '#22c55e',
-                    fillOpacity: 0.25,
-                    interactive: false
-                }).addTo(structuresLayer);
-            }
-            if (m) {
-                var mainIcon = L.divIcon({
-                    className: '',
-                    html: '<div class="country-badge-label">' + m.flag + ' ' + m.name + ' ★ ' + m.capital + '</div>',
-                    iconSize: [140, 26],
-                    iconAnchor: [70, 13]
-                });
-                L.marker([m.capitalLat, m.capitalLon], { icon: mainIcon, interactive: false, keyboard: false }).addTo(structuresLayer);
-            }
-        };
-
-        window.setCountryMapLayer($initLayerMode);
-    </script>
-</body>
-</html>
-    """.trimIndent()
-}
 
 @Composable
 private fun CountryComparisonColumn(
