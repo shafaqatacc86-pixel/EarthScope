@@ -15,7 +15,8 @@
 -keep class com.example.data.model.** { *; }
 -keep class com.example.data.local.** { *; }
 
-# Preserve source file and line numbers for Play Console crash reporting
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
+# Google Maps SDK
+-keep class com.google.android.gms.maps.** { *; }
+-keep interface com.google.android.gms.maps.** { *; }
+
 
