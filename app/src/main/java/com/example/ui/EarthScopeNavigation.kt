@@ -785,6 +785,15 @@ fun EarthScopeDashboardScreen(
                     )
                 }
 
+                item(span = { GridItemSpan(maxLineSpan) }, contentType = "native_ad") {
+                    AdMobNativeAdCard(
+                        placementName = "Dashboard_Native_Card",
+                        adUnitId = AdMobConfig.NATIVE_HOME_FEED_AD_UNIT_ID,
+                        isLightTheme = isLightTheme,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+
                 items(
                     items = features.drop(4),
                     key = { it.id },

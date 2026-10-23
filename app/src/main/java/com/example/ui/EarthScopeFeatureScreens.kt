@@ -3889,7 +3889,8 @@ fun AltitudeAndGpsInfoScreen(
 
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f)
+                    .fillMaxWidth()
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -3992,6 +3993,14 @@ fun AltitudeAndGpsInfoScreen(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
+
+            if (!isHudLocked) {
+                AdMobAdaptiveBanner(
+                    placementName = "Altitude_Bottom_Banner",
+                    adUnitId = AdMobConfig.BANNER_AD_UNIT_ID,
+                    isLightTheme = isLightTheme
+                )
             }
         }
     }
@@ -4130,6 +4139,13 @@ fun WorldCountryAtlasScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
+
+                // Sticky Bottom Adaptive Banner Ad on Country Atlas Screen
+                AdMobAdaptiveBanner(
+                    placementName = "Country_Atlas_Bottom_Banner",
+                    adUnitId = AdMobConfig.BANNER_AD_UNIT_ID,
+                    isLightTheme = isLightTheme
+                )
             }
         }
 

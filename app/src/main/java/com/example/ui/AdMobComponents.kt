@@ -115,47 +115,14 @@ object AdMobSdkState {
 }
 
 object AdMobConfig {
-    // Mode Switch: Set to true for Google Test Ads, false for Production Real Ads
-    const val USE_TEST_ADS: Boolean = true
+    // Mode Switch: false = 100% Real Production Google AdMob Ads Active
+    const val USE_TEST_ADS: Boolean = false
 
     // Offline dummy fallback (if device has zero internet connectivity)
     const val IS_DUMMY_TEST_MODE: Boolean = false
 
     // ==========================================
-    // 1. Google Official Test Ad Unit IDs (Active)
-    // ==========================================
-    const val ADMOB_APP_ID: String = "ca-app-pub-3940256099942544~3347511713"
-
-    // Banner Ads (Test Adaptive Banner)
-    const val BANNER_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/9214589741"
-    const val BANNER_HOME_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
-    const val BANNER_SPEEDOMETER_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
-    const val BANNER_COMPASS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
-    const val BANNER_SHARE_LOC_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
-    const val BANNER_PIN_DETAILS_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
-    const val BANNER_SAVED_PLACES_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
-    const val BANNER_TRIP_HISTORY_AD_UNIT_ID: String = BANNER_AD_UNIT_ID
-
-    // Native / Feed Card Ads (Test Native Advanced)
-    const val NATIVE_HOME_FEED_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/2247696110"
-    const val NATIVE_NEARBY_PLACES_AD_UNIT_ID: String = NATIVE_HOME_FEED_AD_UNIT_ID
-    const val NATIVE_COUNTRY_DETAILS_AD_UNIT_ID: String = NATIVE_HOME_FEED_AD_UNIT_ID
-    const val NATIVE_COUNTRY_ATLAS_AD_UNIT_ID: String = NATIVE_HOME_FEED_AD_UNIT_ID
-
-    // Interstitial Full-Screen Ads (Test Interstitial)
-    const val INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/1033173712"
-    const val INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
-    const val INTERSTITIAL_PIN_SAVED_AD_UNIT_ID: String = INTERSTITIAL_AD_UNIT_ID
-
-    // Rewarded & Rewarded Interstitial Ads (Test Rewarded)
-    const val REWARDED_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/5224354917"
-    const val REWARDED_INTERSTITIAL_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/5354046379"
-
-    // App Open Ads (Test App Open)
-    const val APP_OPEN_AD_UNIT_ID: String = "ca-app-pub-3940256099942544/9257395921"
-
-    // ==========================================
-    // 2. User's Real Production AdMob IDs (Saved for Production Release)
+    // Real Production AdMob IDs (User's Official Account)
     // ==========================================
     const val PROD_APP_ID = "ca-app-pub-9038493214458444~4203142842"
     const val PROD_BANNER_AD_UNIT_ID = "ca-app-pub-9038493214458444/4241529650"
@@ -163,9 +130,40 @@ object AdMobConfig {
     const val PROD_REWARDED_AD_UNIT_ID = "ca-app-pub-9038493214458444/2681035976"
     const val PROD_REWARDED_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-9038493214458444/5307199318"
 
+    // Active App ID
+    const val ADMOB_APP_ID: String = PROD_APP_ID
+
+    // Real Banner Ads (Adaptive Banners across all screens)
+    const val BANNER_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val BANNER_HOME_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val BANNER_SPEEDOMETER_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val BANNER_COMPASS_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val BANNER_SHARE_LOC_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val BANNER_PIN_DETAILS_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val BANNER_SAVED_PLACES_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val BANNER_TRIP_HISTORY_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+
+    // Real Native / Inline Feed Card Ads (using Real Banner unit in Card frame)
+    const val NATIVE_HOME_FEED_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val NATIVE_NEARBY_PLACES_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val NATIVE_COUNTRY_DETAILS_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    const val NATIVE_COUNTRY_ATLAS_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+
+    // Real Full-Screen Interstitial Ads
+    const val INTERSTITIAL_AD_UNIT_ID: String = PROD_INTERSTITIAL_AD_UNIT_ID
+    const val INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID: String = PROD_INTERSTITIAL_AD_UNIT_ID
+    const val INTERSTITIAL_PIN_SAVED_AD_UNIT_ID: String = PROD_INTERSTITIAL_AD_UNIT_ID
+
+    // Real Rewarded Video Ads
+    const val REWARDED_AD_UNIT_ID: String = PROD_REWARDED_AD_UNIT_ID
+    const val REWARDED_INTERSTITIAL_AD_UNIT_ID: String = PROD_REWARDED_INTERSTITIAL_AD_UNIT_ID
+
+    // Real App Open / Launch Ad
+    const val APP_OPEN_AD_UNIT_ID: String = PROD_INTERSTITIAL_AD_UNIT_ID
+
     // Frequency Capping Settings (Google Policy Safe)
-    const val INTERSTITIAL_CLICK_INTERVAL: Int = 3 // Show every 3rd feature navigation
-    const val INTERSTITIAL_MIN_COOLDOWN_MS: Long = 45_000L // Minimum 45 sec gap between interstitials
+    const val INTERSTITIAL_CLICK_INTERVAL: Int = 2 // Show every 2nd feature navigation
+    const val INTERSTITIAL_MIN_COOLDOWN_MS: Long = 15_000L // 15s cooldown
 }
 
 /**
@@ -253,7 +251,7 @@ fun AdMobAdaptiveBanner(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Elegant placeholder while live ad creative is requested and rendered
+            // Clean subtle sponsor placeholder while live ad creative is requested and rendered
             if (!adLoadedSuccessfully) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -274,7 +272,7 @@ fun AdMobAdaptiveBanner(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Sponsored • Loading Ad...",
+                        text = "Sponsored",
                         fontSize = 11.sp,
                         color = if (isLightTheme) Color(0xFF64748B) else Color(0xFF94A3B8)
                     )
@@ -303,14 +301,7 @@ fun AdMobAdaptiveBanner(
 
                             override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
                                 adLoadedSuccessfully = false
-                                // Retry after 10s only if view is still actively attached to window
-                                postDelayed({
-                                    try {
-                                        if (isAttachedToWindow) {
-                                            loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
-                                        }
-                                    } catch (_: Throwable) {}
-                                }, 10000L)
+                                android.util.Log.d("EarthScopeAds", "Banner ad failed to load [${error.code}]: ${error.message}")
                             }
                         }
                         try {
@@ -404,7 +395,7 @@ fun showRealAdMobRewardedAd(
     onDismissed: () -> Unit = {}
 ) {
     val activity = context as? Activity
-    if (activity == null || AdMobSdkState.isRunningOnEmulator()) {
+    if (activity == null) {
         onRewardEarned()
         onDismissed()
         return
