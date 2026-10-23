@@ -1400,6 +1400,240 @@ fun InteractiveMapPageScreen(
                 }
             )
 
+            // Sleek, Instant Top Search Bar + Category Filter Bar (Rendered immediately in parent Column)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier
+                        .widthIn(max = 460.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Compact 40.dp Pill Search Input Bar
+                    Surface(
+                        color = cardBg.copy(alpha = 0.95f),
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(1.dp, borderColor),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .testTag("map_page_search_input")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = Color(0xFF10B981),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(modifier = Modifier.weight(1f)) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Search city, country or saved place...",
+                                        fontSize = 12.sp,
+                                        color = secondaryText,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    singleLine = true,
+                                    textStyle = TextStyle(
+                                        color = primaryText,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Medium
+                                    ),
+                                    cursorBrush = SolidColor(Color(0xFF10B981)),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(
+                                        onSearch = { performMapSearch() }
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { searchQuery = "" },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Clear",
+                                        tint = secondaryText,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Top Search Button Icon
+                    Surface(
+                        color = Color(0xFF10B981),
+                        shape = CircleShape,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clickable { performMapSearch() }
+                            .testTag("map_page_search_button")
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search Location",
+                                tint = Color.White,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Horizontal Category Filter Bar
+                Spacer(modifier = Modifier.height(5.dp))
+                Row(
+                    modifier = Modifier
+                        .widthIn(max = 460.dp)
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isAllSelected = selectedCategoryFilter == "ALL"
+                    Surface(
+                        color = if (isAllSelected) Color(0xFF10B981) else cardBg.copy(alpha = 0.92f),
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(1.dp, if (isAllSelected) Color(0xFF10B981) else borderColor),
+                        shadowElevation = 2.dp,
+                        modifier = Modifier
+                            .clickable { selectedCategoryFilter = "ALL" }
+                            .testTag("filter_category_all")
+                    ) {
+                        Text(
+                            text = "All (${savedFloatingPins.size})",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isAllSelected) Color.White else primaryText,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    PinLocationCategory.entries.forEach { cat ->
+                        val count = savedFloatingPins.count { it.categoryKey.equals(cat.key, ignoreCase = true) }
+                        val isSelected = selectedCategoryFilter == cat.key
+                        Surface(
+                            color = if (isSelected) cat.color else cardBg.copy(alpha = 0.92f),
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(1.dp, if (isSelected) cat.color else borderColor),
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .clickable {
+                                    selectedCategoryFilter = if (isSelected) "ALL" else cat.key
+                                }
+                                .testTag("filter_category_${cat.key.lowercase()}")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = cat.icon,
+                                    contentDescription = cat.label,
+                                    tint = if (isSelected) Color.White else cat.color,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (count > 0) "${cat.label} ($count)" else cat.label,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.White else primaryText
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Banner when user selected "Custom Location (Pick on Map)"
+                if (isPickingCustomMapPointForFloatingPin) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = Color(0xFF0284C7),
+                        shape = RoundedCornerShape(12.dp),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.widthIn(max = 460.dp).fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "📌 Tap on the map to place your marker",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = { isPickingCustomMapPointForFloatingPin = false }) {
+                                Text("Cancel", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Measurement Distance Readout Banner when Ruler Mode is active
+                if (isMeasureMode) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = Color(0xFF0F172A).copy(alpha = 0.95f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFFF59E0B)),
+                        modifier = Modifier.widthIn(max = 460.dp).fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = if (measurePoints.size < 2) "Tap 2+ points on map to measure"
+                                    else "Distance: ${String.format(Locale.US, "%.2f", measuredDistanceKm)} km (${(measuredDistanceKm * 1000).roundToInt()} m)",
+                                    color = Color(0xFFFDE047),
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 11.5.sp
+                                )
+                                Text(
+                                    text = "${measurePoints.size} points pinned",
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 9.5.sp
+                                )
+                            }
+                            TextButton(
+                                onClick = { measurePoints.clear() }
+                            ) {
+                                Text("Clear", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 val googleMapType = when (mapLayerMode) {
                         1 -> MapType.HYBRID
@@ -1589,245 +1823,6 @@ fun InteractiveMapPageScreen(
                         }
                     }
 
-                // ===============================================================
-                // SLEEK, COMPACT, RESPONSIVE TOP SEARCH BAR + SEARCH ICON BUTTON
-                // + HORIZONTAL CATEGORY FILTER BAR
-                // ===============================================================
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .widthIn(max = 460.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Compact 40.dp Pill Search Input Bar
-                        Surface(
-                            color = cardBg.copy(alpha = 0.95f),
-                            shape = RoundedCornerShape(50),
-                            border = BorderStroke(1.dp, borderColor),
-                            shadowElevation = 5.dp,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(40.dp)
-                                .testTag("map_page_search_input")
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    tint = Color(0xFF10B981),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Box(modifier = Modifier.weight(1f)) {
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            text = "Search city, country or saved place...",
-                                            fontSize = 12.sp,
-                                            color = secondaryText,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    BasicTextField(
-                                        value = searchQuery,
-                                        onValueChange = { searchQuery = it },
-                                        singleLine = true,
-                                        textStyle = TextStyle(
-                                            color = primaryText,
-                                            fontSize = 12.5.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        cursorBrush = SolidColor(Color(0xFF10B981)),
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                        keyboardActions = KeyboardActions(
-                                            onSearch = { performMapSearch() }
-                                        ),
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(
-                                        onClick = { searchQuery = "" },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Clear,
-                                            contentDescription = "Clear",
-                                            tint = secondaryText,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(6.dp))
-
-                        // Top Search Button Icon (Right next to Search Input Bar as requested!)
-                        Surface(
-                            color = Color(0xFF10B981),
-                            shape = CircleShape,
-                            shadowElevation = 5.dp,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clickable { performMapSearch() }
-                                .testTag("map_page_search_button")
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search Location",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(19.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    // Horizontal Category Filter Bar (All + Travelling, Office, Work, Home, etc.)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier
-                            .widthIn(max = 460.dp)
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val isAllSelected = selectedCategoryFilter == "ALL"
-                        Surface(
-                            color = if (isAllSelected) Color(0xFF10B981) else cardBg.copy(alpha = 0.92f),
-                            shape = RoundedCornerShape(50),
-                            border = BorderStroke(1.dp, if (isAllSelected) Color(0xFF10B981) else borderColor),
-                            shadowElevation = 3.dp,
-                            modifier = Modifier
-                                .clickable { selectedCategoryFilter = "ALL" }
-                                .testTag("filter_category_all")
-                        ) {
-                            Text(
-                                text = "All (${savedFloatingPins.size})",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = if (isAllSelected) Color.White else primaryText,
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
-                            )
-                        }
-
-                        PinLocationCategory.entries.forEach { cat ->
-                            val count = savedFloatingPins.count { it.categoryKey.equals(cat.key, ignoreCase = true) }
-                            val isSelected = selectedCategoryFilter == cat.key
-                            Surface(
-                                color = if (isSelected) cat.color else cardBg.copy(alpha = 0.92f),
-                                shape = RoundedCornerShape(50),
-                                border = BorderStroke(1.dp, if (isSelected) cat.color else borderColor),
-                                shadowElevation = 3.dp,
-                                modifier = Modifier
-                                    .clickable {
-                                        selectedCategoryFilter = if (isSelected) "ALL" else cat.key
-                                    }
-                                    .testTag("filter_category_${cat.key.lowercase()}")
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = cat.icon,
-                                        contentDescription = cat.label,
-                                        tint = if (isSelected) Color.White else cat.color,
-                                        modifier = Modifier.size(11.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = if (count > 0) "${cat.label} ($count)" else cat.label,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.White else primaryText
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Banner when user selected "Custom Location (Pick on Map)"
-                    if (isPickingCustomMapPointForFloatingPin) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            color = Color(0xFF0284C7),
-                            shape = RoundedCornerShape(14.dp),
-                            shadowElevation = 6.dp,
-                            modifier = Modifier.widthIn(max = 460.dp).fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "📌 Tap on the map to place your Custom Location marker",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.5.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                TextButton(onClick = { isPickingCustomMapPointForFloatingPin = false }) {
-                                    Text("Cancel", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
-                                }
-                            }
-                        }
-                    }
-
-                    // Measurement Distance Readout Banner when Ruler Mode is active
-                    if (isMeasureMode) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            color = Color(0xFF0F172A).copy(alpha = 0.92f),
-                            shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, Color(0xFFF59E0B)),
-                            modifier = Modifier.widthIn(max = 460.dp).fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(
-                                        text = if (measurePoints.size < 2) "Tap 2+ points on map to measure"
-                                        else "Distance: ${String.format(Locale.US, "%.2f", measuredDistanceKm)} km (${(measuredDistanceKm * 1000).roundToInt()} m)",
-                                        color = Color(0xFFFDE047),
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 12.sp
-                                    )
-                                    Text(
-                                        text = "${measurePoints.size} points pinned",
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        fontSize = 10.sp
-                                    )
-                                }
-                                TextButton(
-                                    onClick = {
-                                        measurePoints.clear()
-                                    }
-                                ) {
-                                    Text("Clear", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                }
-                            }
-                        }
-                    }
-                }
 
                 // Speech-Bubble 💬 Info Window is rendered directly inside the Google Maps OpenGL Marker
                 // (and Leaflet marker layer) so it moves 100% locked with the marker during map gestures!

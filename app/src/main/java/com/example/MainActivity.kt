@@ -6,13 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.EarthScopeAppHost
 import com.example.ui.GlobeViewModel
 import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.SpaceBlack
 
 class MainActivity : ComponentActivity() {
     private val globeViewModel: GlobeViewModel by viewModels()
@@ -27,19 +27,22 @@ class MainActivity : ComponentActivity() {
                 null
             )
         } catch (_: Throwable) {}
-        if (!com.example.ui.AdMobSdkState.isRunningOnEmulator()) {
-            Thread {
-                try {
-                    com.google.android.gms.ads.MobileAds.initialize(applicationContext) {
-                        com.example.ui.AdMobSdkState.markInitialized()
-                    }
-                } catch (_: Throwable) {
-                    com.example.ui.AdMobSdkState.markInitialized()
-                }
-            }.start()
+        try {
+            val reqConfig = com.google.android.gms.ads.RequestConfiguration.Builder()
+                .setTestDeviceIds(listOf(com.google.android.gms.ads.AdRequest.DEVICE_ID_EMULATOR))
+                .build()
+            com.google.android.gms.ads.MobileAds.setRequestConfiguration(reqConfig)
+        } catch (_: Throwable) {}
+        try {
+            com.google.android.gms.ads.MobileAds.initialize(this) {
+                com.example.ui.AdMobManager.initialize(applicationContext)
+            }
+        } catch (_: Throwable) {
+            com.example.ui.AdMobManager.initialize(applicationContext)
         }
         setContent {
-            MyApplicationTheme {
+            val uiState by globeViewModel.uiState.collectAsStateWithLifecycle()
+            MyApplicationTheme(themeMode = uiState.themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {

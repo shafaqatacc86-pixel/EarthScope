@@ -237,55 +237,93 @@ fun AdMobAdaptiveBanner(
     isLightTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val bannerBg = if (isLightTheme) Color(0xFFF8FAFC) else Color(0xFF0D1729)
-    val borderColor = if (isLightTheme) Color(0xFFCBD5E1) else Color(0xFF1E3252)
-    val isEmulator = remember { AdMobSdkState.isRunningOnEmulator() }
-    var adLoadFailed by remember(adUnitId) { mutableStateOf(false) }
+    val bannerBg = if (isLightTheme) Color(0xFFF8FAFC) else Color(0xFF091222)
+    val borderColor = if (isLightTheme) Color(0xFFE2E8F0) else Color(0xFF1E293B)
     var adLoadedSuccessfully by remember(adUnitId) { mutableStateOf(false) }
-
-    if (isEmulator || adLoadFailed) {
-        // Automatically hide and collapse space if running on emulator or ad load fails/offline
-        return
-    }
 
     Surface(
         color = bannerBg,
-        border = if (adLoadedSuccessfully) BorderStroke(1.dp, borderColor) else null,
-        shadowElevation = if (adLoadedSuccessfully) 4.dp else 0.dp,
+        border = BorderStroke(0.8.dp, borderColor),
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = if (adLoadedSuccessfully) 8.dp else 0.dp)
+            .height(58.dp)
             .testTag("admob_banner_$placementName")
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = if (adLoadedSuccessfully) 4.dp else 0.dp),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
+            // Elegant placeholder while live ad creative is requested and rendered
+            if (!adLoadedSuccessfully) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    Surface(
+                        color = if (isLightTheme) Color(0xFFE2E8F0) else Color(0xFF1E293B),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "AD",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isLightTheme) Color(0xFF64748B) else Color(0xFF94A3B8),
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Sponsored • Loading Ad...",
+                        fontSize = 11.sp,
+                        color = if (isLightTheme) Color(0xFF64748B) else Color(0xFF94A3B8)
+                    )
+                }
+            }
+
             androidx.compose.ui.viewinterop.AndroidView(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
                 factory = { ctx ->
                     com.google.android.gms.ads.AdView(ctx).apply {
-                        setAdSize(com.google.android.gms.ads.AdSize.BANNER)
+                        val displayMetrics = ctx.resources.displayMetrics
+                        val adWidth = (displayMetrics.widthPixels / displayMetrics.density).toInt()
+                        val adaptiveSize = try {
+                            com.google.android.gms.ads.AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(ctx, adWidth)
+                        } catch (_: Throwable) {
+                            com.google.android.gms.ads.AdSize.BANNER
+                        }
+                        setAdSize(adaptiveSize)
                         this.adUnitId = adUnitId
                         adListener = object : com.google.android.gms.ads.AdListener() {
                             override fun onAdLoaded() {
                                 adLoadedSuccessfully = true
-                                adLoadFailed = false
                             }
 
                             override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                adLoadFailed = true
                                 adLoadedSuccessfully = false
+                                // Retry after 10s only if view is still actively attached to window
+                                postDelayed({
+                                    try {
+                                        if (isAttachedToWindow) {
+                                            loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
+                                        }
+                                    } catch (_: Throwable) {}
+                                }, 10000L)
                             }
                         }
                         try {
                             loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
                         } catch (_: Throwable) {
-                            adLoadFailed = true
+                            adLoadedSuccessfully = false
                         }
                     }
+                },
+                onRelease = { adView ->
+                    try {
+                        adView.destroy()
+                    } catch (_: Throwable) {}
                 }
             )
         }
@@ -306,14 +344,7 @@ fun AdMobNativeAdCard(
 ) {
     val cardBg = if (isLightTheme) Color.White else Color(0xFF111E34)
     val borderColor = if (isLightTheme) Color(0xFFCBD5E1) else Color(0xFF23385E)
-    val isEmulator = remember { AdMobSdkState.isRunningOnEmulator() }
-    var adLoadFailed by remember(adUnitId) { mutableStateOf(false) }
     var adLoadedSuccessfully by remember(adUnitId) { mutableStateOf(false) }
-
-    if (isEmulator || adLoadFailed) {
-        // Automatically hide and collapse space if running on emulator or ad load fails/offline
-        return
-    }
 
     Surface(
         color = if (adLoadedSuccessfully) cardBg else Color.Transparent,
@@ -340,20 +371,23 @@ fun AdMobNativeAdCard(
                         adListener = object : com.google.android.gms.ads.AdListener() {
                             override fun onAdLoaded() {
                                 adLoadedSuccessfully = true
-                                adLoadFailed = false
                             }
 
                             override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                adLoadFailed = true
                                 adLoadedSuccessfully = false
                             }
                         }
                         try {
                             loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
                         } catch (_: Throwable) {
-                            adLoadFailed = true
+                            adLoadedSuccessfully = false
                         }
                     }
+                },
+                onRelease = { adView ->
+                    try {
+                        adView.destroy()
+                    } catch (_: Throwable) {}
                 }
             )
         }
@@ -425,8 +459,94 @@ fun showRealAdMobRewardedAd(
 
 /**
  * ============================================================================
- * 3. FULL-SCREEN INTERSTITIAL AD HANDLER (Real Google AdMob InterstitialAd)
+ * 3. CENTRALIZED PROFESSIONAL ADMOB MANAGER (Background Preloading & Zero-Delay Navigation)
  * ============================================================================
+ */
+object AdMobManager {
+    var isInitialized: Boolean = false
+        private set
+
+    private var cachedInterstitial: com.google.android.gms.ads.interstitial.InterstitialAd? = null
+    private var isInterstitialLoading: Boolean = false
+    private var lastInterstitialShownTime: Long = 0L
+
+    fun initialize(context: Context) {
+        if (isInitialized) return
+        isInitialized = true
+        AdMobSdkState.markInitialized()
+        preloadInterstitial(context.applicationContext)
+    }
+
+    fun preloadInterstitial(context: Context) {
+        if (cachedInterstitial != null || isInterstitialLoading) return
+        val appContext = context.applicationContext
+        isInterstitialLoading = true
+
+        val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
+        com.google.android.gms.ads.interstitial.InterstitialAd.load(
+            appContext,
+            AdMobConfig.INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID,
+            adRequest,
+            object : com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback() {
+                override fun onAdLoaded(interstitialAd: com.google.android.gms.ads.interstitial.InterstitialAd) {
+                    cachedInterstitial = interstitialAd
+                    isInterstitialLoading = false
+                }
+
+                override fun onAdFailedToLoad(loadAdError: com.google.android.gms.ads.LoadAdError) {
+                    cachedInterstitial = null
+                    isInterstitialLoading = false
+                }
+            }
+        )
+    }
+
+    fun isInterstitialReady(): Boolean = cachedInterstitial != null
+
+    /**
+     * Shows preloaded Interstitial Ad if ready.
+     * NEVER blocks the user with a loading modal!
+     * If ready, displays the ad immediately.
+     * If not ready or cooldown active, navigates IMMEDIATELY without delay.
+     */
+    fun showInterstitialIfAvailable(
+        activity: Activity?,
+        minIntervalMs: Long = 15_000L,
+        onFinished: () -> Unit
+    ) {
+        val now = System.currentTimeMillis()
+        val ad = cachedInterstitial
+
+        if (activity == null || ad == null || (now - lastInterstitialShownTime < minIntervalMs)) {
+            // Not ready or interval too short: navigate immediately with zero waiting!
+            onFinished()
+            if (activity != null && cachedInterstitial == null) {
+                preloadInterstitial(activity.applicationContext)
+            }
+            return
+        }
+
+        ad.fullScreenContentCallback = object : com.google.android.gms.ads.FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() {
+                cachedInterstitial = null
+                lastInterstitialShownTime = System.currentTimeMillis()
+                preloadInterstitial(activity.applicationContext)
+                onFinished()
+            }
+
+            override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+                cachedInterstitial = null
+                preloadInterstitial(activity.applicationContext)
+                onFinished()
+            }
+        }
+        cachedInterstitial = null
+        ad.show(activity)
+    }
+}
+
+/**
+ * Backward-compatible helper composable that never blocks navigation
  */
 @Composable
 fun AdMobDummyInterstitialDialog(
@@ -444,65 +564,9 @@ fun AdMobDummyInterstitialDialog(
         ctx as? Activity
     }
 
-    LaunchedEffect(adUnitId) {
-        if (activity == null) {
+    LaunchedEffect(Unit) {
+        AdMobManager.showInterstitialIfAvailable(activity, minIntervalMs = 15_000L) {
             onAdClosed()
-            return@LaunchedEffect
-        }
-        val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
-        com.google.android.gms.ads.interstitial.InterstitialAd.load(
-            context,
-            adUnitId,
-            adRequest,
-            object : com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback() {
-                override fun onAdLoaded(interstitialAd: com.google.android.gms.ads.interstitial.InterstitialAd) {
-                    interstitialAd.fullScreenContentCallback =
-                        object : com.google.android.gms.ads.FullScreenContentCallback() {
-                            override fun onAdDismissedFullScreenContent() {
-                                onAdClosed()
-                            }
-
-                            override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
-                                onAdClosed()
-                            }
-                        }
-                    interstitialAd.show(activity)
-                }
-
-                override fun onAdFailedToLoad(loadAdError: com.google.android.gms.ads.LoadAdError) {
-                    onAdClosed()
-                }
-            }
-        )
-    }
-
-    // Centered non-intrusive loading dialog while Google prepares the full-screen ad
-    Dialog(
-        onDismissRequest = { onAdClosed() },
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
-    ) {
-        Surface(
-            color = Color(0xFF0F172A),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.5f))
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                androidx.compose.material3.CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color(0xFF38BDF8),
-                    strokeWidth = 2.5.dp
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Loading Ad...",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
         }
     }
 }
