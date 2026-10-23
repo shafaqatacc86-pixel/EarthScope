@@ -55,6 +55,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -115,7 +116,8 @@ object AdMobSdkState {
 }
 
 object AdMobConfig {
-    // Mode Switch: false = 100% Real Production Google AdMob Ads Active
+    // Mode Switch: true = 100% Official Google AdMob Test Ads Active (Fast, 100% fill rate for testing & verification)
+    // false = Real Production Google AdMob Ads Active
     const val USE_TEST_ADS: Boolean = false
 
     // Offline dummy fallback (if device has zero internet connectivity)
@@ -130,36 +132,48 @@ object AdMobConfig {
     const val PROD_REWARDED_AD_UNIT_ID = "ca-app-pub-9038493214458444/2681035976"
     const val PROD_REWARDED_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-9038493214458444/5307199318"
 
+    // ==========================================
+    // Official Google AdMob Sample Test Ad Unit IDs
+    // (Google guarantees 100% fill rate for these IDs without account warnings)
+    // ==========================================
+    const val TEST_APP_ID = "ca-app-pub-3940256099942544~3347511713"
+    const val TEST_BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/9214589741" // Adaptive Banner
+    const val TEST_STANDARD_BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/6300978111" // Standard Banner
+    const val TEST_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+    const val TEST_REWARDED_AD_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
+    const val TEST_REWARDED_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/5354046379"
+    const val TEST_APP_OPEN_AD_UNIT_ID = "ca-app-pub-3940256099942544/9257395921"
+
     // Active App ID
-    const val ADMOB_APP_ID: String = PROD_APP_ID
+    val ADMOB_APP_ID: String get() = if (USE_TEST_ADS) TEST_APP_ID else PROD_APP_ID
 
-    // Real Banner Ads (Adaptive Banners across all screens)
-    const val BANNER_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val BANNER_HOME_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val BANNER_SPEEDOMETER_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val BANNER_COMPASS_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val BANNER_SHARE_LOC_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val BANNER_PIN_DETAILS_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val BANNER_SAVED_PLACES_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val BANNER_TRIP_HISTORY_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    // Active Banner Ads (Adaptive Banners across all screens)
+    val BANNER_AD_UNIT_ID: String get() = if (USE_TEST_ADS) TEST_BANNER_AD_UNIT_ID else PROD_BANNER_AD_UNIT_ID
+    val BANNER_HOME_AD_UNIT_ID: String get() = BANNER_AD_UNIT_ID
+    val BANNER_SPEEDOMETER_AD_UNIT_ID: String get() = BANNER_AD_UNIT_ID
+    val BANNER_COMPASS_AD_UNIT_ID: String get() = BANNER_AD_UNIT_ID
+    val BANNER_SHARE_LOC_AD_UNIT_ID: String get() = BANNER_AD_UNIT_ID
+    val BANNER_PIN_DETAILS_AD_UNIT_ID: String get() = BANNER_AD_UNIT_ID
+    val BANNER_SAVED_PLACES_AD_UNIT_ID: String get() = BANNER_AD_UNIT_ID
+    val BANNER_TRIP_HISTORY_AD_UNIT_ID: String get() = BANNER_AD_UNIT_ID
 
-    // Real Native / Inline Feed Card Ads (using Real Banner unit in Card frame)
-    const val NATIVE_HOME_FEED_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val NATIVE_NEARBY_PLACES_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val NATIVE_COUNTRY_DETAILS_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
-    const val NATIVE_COUNTRY_ATLAS_AD_UNIT_ID: String = PROD_BANNER_AD_UNIT_ID
+    // Active Native / Inline Feed Card Ads (using Banner unit in Card frame)
+    val NATIVE_HOME_FEED_AD_UNIT_ID: String get() = if (USE_TEST_ADS) TEST_STANDARD_BANNER_AD_UNIT_ID else PROD_BANNER_AD_UNIT_ID
+    val NATIVE_NEARBY_PLACES_AD_UNIT_ID: String get() = NATIVE_HOME_FEED_AD_UNIT_ID
+    val NATIVE_COUNTRY_DETAILS_AD_UNIT_ID: String get() = NATIVE_HOME_FEED_AD_UNIT_ID
+    val NATIVE_COUNTRY_ATLAS_AD_UNIT_ID: String get() = NATIVE_HOME_FEED_AD_UNIT_ID
 
-    // Real Full-Screen Interstitial Ads
-    const val INTERSTITIAL_AD_UNIT_ID: String = PROD_INTERSTITIAL_AD_UNIT_ID
-    const val INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID: String = PROD_INTERSTITIAL_AD_UNIT_ID
-    const val INTERSTITIAL_PIN_SAVED_AD_UNIT_ID: String = PROD_INTERSTITIAL_AD_UNIT_ID
+    // Active Full-Screen Interstitial Ads
+    val INTERSTITIAL_AD_UNIT_ID: String get() = if (USE_TEST_ADS) TEST_INTERSTITIAL_AD_UNIT_ID else PROD_INTERSTITIAL_AD_UNIT_ID
+    val INTERSTITIAL_FEATURE_NAV_AD_UNIT_ID: String get() = INTERSTITIAL_AD_UNIT_ID
+    val INTERSTITIAL_PIN_SAVED_AD_UNIT_ID: String get() = INTERSTITIAL_AD_UNIT_ID
 
-    // Real Rewarded Video Ads
-    const val REWARDED_AD_UNIT_ID: String = PROD_REWARDED_AD_UNIT_ID
-    const val REWARDED_INTERSTITIAL_AD_UNIT_ID: String = PROD_REWARDED_INTERSTITIAL_AD_UNIT_ID
+    // Active Rewarded Video Ads
+    val REWARDED_AD_UNIT_ID: String get() = if (USE_TEST_ADS) TEST_REWARDED_AD_UNIT_ID else PROD_REWARDED_AD_UNIT_ID
+    val REWARDED_INTERSTITIAL_AD_UNIT_ID: String get() = if (USE_TEST_ADS) TEST_REWARDED_INTERSTITIAL_AD_UNIT_ID else PROD_REWARDED_INTERSTITIAL_AD_UNIT_ID
 
-    // Real App Open / Launch Ad
-    const val APP_OPEN_AD_UNIT_ID: String = PROD_INTERSTITIAL_AD_UNIT_ID
+    // Active App Open / Launch Ad
+    val APP_OPEN_AD_UNIT_ID: String get() = if (USE_TEST_ADS) TEST_APP_OPEN_AD_UNIT_ID else PROD_INTERSTITIAL_AD_UNIT_ID
 
     // Frequency Capping Settings (Google Policy Safe)
     const val INTERSTITIAL_CLICK_INTERVAL: Int = 2 // Show every 2nd feature navigation
@@ -225,7 +239,156 @@ private val DUMMY_AD_CREATIVES = listOf(
 
 /**
  * ============================================================================
- * 1. ADAPTIVE BANNER AD COMPONENT (Real Google AdMob AdView + Safe Container)
+ * HIGH-PERFORMANCE BANNER AD LIFECYCLE & CACHING MANAGER
+ * ============================================================================
+ * Solves the navigation reload problem completely:
+ * 1. Caches AdView instances per placement so navigating between pages or pressing
+ *    Back DOES NOT reload, destroy, or flicker the banner.
+ * 2. Preloads the primary banners on app start so the first view is instant.
+ * 3. Safely detaches and reattaches views across Composables without memory leaks.
+ * 4. Bridges Activity lifecycle onPause, onResume, and onDestroy to AdMob SDK.
+ */
+object BannerAdManager {
+    private val cachedAdViews = mutableMapOf<String, com.google.android.gms.ads.AdView>()
+    private val adLoadStatus = mutableStateMapOf<String, Boolean>()
+    private val isCurrentlyLoading = mutableSetOf<String>()
+
+    fun isAdLoaded(placement: String): Boolean {
+        return adLoadStatus[placement] == true
+    }
+
+    private fun findActivity(context: Context): Activity? {
+        var ctx = context
+        while (ctx is android.content.ContextWrapper) {
+            if (ctx is Activity) return ctx
+            ctx = ctx.baseContext
+        }
+        return null
+    }
+
+    fun getOrCreateBanner(
+        context: Context,
+        placement: String,
+        adUnitId: String,
+        isStandardBanner: Boolean = false
+    ): com.google.android.gms.ads.AdView {
+        val existing = cachedAdViews[placement]
+        if (existing != null) {
+            (existing.parent as? android.view.ViewGroup)?.removeView(existing)
+            if (adLoadStatus[placement] != true && !isCurrentlyLoading.contains(placement)) {
+                loadAdInternal(placement, existing)
+            }
+            return existing
+        }
+
+        val targetContext = findActivity(context) ?: context
+        val adView = com.google.android.gms.ads.AdView(targetContext)
+        val adSize = if (isStandardBanner) {
+            com.google.android.gms.ads.AdSize.BANNER
+        } else {
+            val displayMetrics = targetContext.resources.displayMetrics
+            val adWidth = (displayMetrics.widthPixels / displayMetrics.density).toInt()
+            try {
+                com.google.android.gms.ads.AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(targetContext, adWidth)
+            } catch (_: Throwable) {
+                com.google.android.gms.ads.AdSize.BANNER
+            }
+        }
+        adView.setAdSize(adSize)
+        adView.adUnitId = adUnitId
+
+        adView.adListener = object : com.google.android.gms.ads.AdListener() {
+            override fun onAdLoaded() {
+                adLoadStatus[placement] = true
+                isCurrentlyLoading.remove(placement)
+                android.util.Log.d("EarthScopeAds", "Banner [$placement] loaded successfully")
+            }
+
+            override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                adLoadStatus[placement] = false
+                isCurrentlyLoading.remove(placement)
+                android.util.Log.d("EarthScopeAds", "Banner [$placement] error [${error.code}]: ${error.message}")
+                // Retry silently after 15 seconds if internet reconnects
+                adView.postDelayed({
+                    if (adLoadStatus[placement] != true && !isCurrentlyLoading.contains(placement)) {
+                        if (isNetworkAvailable(targetContext)) {
+                            loadAdInternal(placement, adView)
+                        }
+                    }
+                }, 15_000L)
+            }
+        }
+
+        cachedAdViews[placement] = adView
+        loadAdInternal(placement, adView)
+        return adView
+    }
+
+    fun isNetworkAvailable(context: Context): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            val network = cm?.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (_: Throwable) {
+            true
+        }
+    }
+
+    private fun loadAdInternal(placement: String, adView: com.google.android.gms.ads.AdView) {
+        if (adLoadStatus[placement] == true || isCurrentlyLoading.contains(placement)) return
+        isCurrentlyLoading.add(placement)
+        try {
+            val adRequest = com.google.android.gms.ads.AdRequest.Builder().build()
+            adView.loadAd(adRequest)
+        } catch (_: Throwable) {
+            isCurrentlyLoading.remove(placement)
+            adLoadStatus[placement] = false
+        }
+    }
+
+    fun preloadInitialBanners(context: Context) {
+        try {
+            getOrCreateBanner(context, "Home_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Globe_World_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Speedometer_Bottom_Banner", AdMobConfig.BANNER_SPEEDOMETER_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Compass_Bottom_Banner", AdMobConfig.BANNER_COMPASS_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Map_Page_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Share_Loc_Bottom_Banner", AdMobConfig.BANNER_SHARE_LOC_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Saved_Places_Bottom_Banner", AdMobConfig.BANNER_SAVED_PLACES_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Trip_History_Bottom_Banner", AdMobConfig.BANNER_TRIP_HISTORY_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Nearby_Places_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, false)
+        } catch (_: Throwable) {}
+    }
+
+    fun pauseAll() {
+        cachedAdViews.values.forEach {
+            try { it.pause() } catch (_: Throwable) {}
+        }
+    }
+
+    fun resumeAll() {
+        cachedAdViews.values.forEach {
+            try { it.resume() } catch (_: Throwable) {}
+        }
+    }
+
+    fun destroyAll() {
+        cachedAdViews.values.forEach {
+            try {
+                (it.parent as? android.view.ViewGroup)?.removeView(it)
+                it.destroy()
+            } catch (_: Throwable) {}
+        }
+        cachedAdViews.clear()
+        adLoadStatus.clear()
+        isCurrentlyLoading.clear()
+    }
+}
+
+/**
+ * ============================================================================
+ * 1. ADAPTIVE BANNER AD COMPONENT (Cached & Instant Zero-Reload Navigation)
  * ============================================================================
  */
 @Composable
@@ -235,9 +398,27 @@ fun AdMobAdaptiveBanner(
     isLightTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val isLoaded = BannerAdManager.isAdLoaded(placementName)
+
+    // Trigger preload in background if not already active
+    LaunchedEffect(placementName) {
+        BannerAdManager.getOrCreateBanner(
+            context = context,
+            placement = placementName,
+            adUnitId = adUnitId,
+            isStandardBanner = false
+        )
+    }
+
+    // When offline, without internet, or while loading: occupy ZERO space!
+    // Never show an empty bar, border, or "Loading..." box!
+    if (!isLoaded) {
+        return
+    }
+
     val bannerBg = if (isLightTheme) Color(0xFFF8FAFC) else Color(0xFF091222)
     val borderColor = if (isLightTheme) Color(0xFFE2E8F0) else Color(0xFF1E293B)
-    var adLoadedSuccessfully by remember(adUnitId) { mutableStateOf(false) }
 
     Surface(
         color = bannerBg,
@@ -251,70 +432,24 @@ fun AdMobAdaptiveBanner(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Clean subtle sponsor placeholder while live ad creative is requested and rendered
-            if (!adLoadedSuccessfully) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                ) {
-                    Surface(
-                        color = if (isLightTheme) Color(0xFFE2E8F0) else Color(0xFF1E293B),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = "AD",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isLightTheme) Color(0xFF64748B) else Color(0xFF94A3B8),
-                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Sponsored",
-                        fontSize = 11.sp,
-                        color = if (isLightTheme) Color(0xFF64748B) else Color(0xFF94A3B8)
-                    )
-                }
-            }
-
             androidx.compose.ui.viewinterop.AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
                 factory = { ctx ->
-                    com.google.android.gms.ads.AdView(ctx).apply {
-                        val displayMetrics = ctx.resources.displayMetrics
-                        val adWidth = (displayMetrics.widthPixels / displayMetrics.density).toInt()
-                        val adaptiveSize = try {
-                            com.google.android.gms.ads.AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(ctx, adWidth)
-                        } catch (_: Throwable) {
-                            com.google.android.gms.ads.AdSize.BANNER
-                        }
-                        setAdSize(adaptiveSize)
-                        this.adUnitId = adUnitId
-                        adListener = object : com.google.android.gms.ads.AdListener() {
-                            override fun onAdLoaded() {
-                                adLoadedSuccessfully = true
-                            }
-
-                            override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                adLoadedSuccessfully = false
-                                android.util.Log.d("EarthScopeAds", "Banner ad failed to load [${error.code}]: ${error.message}")
-                            }
-                        }
-                        try {
-                            loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
-                        } catch (_: Throwable) {
-                            adLoadedSuccessfully = false
-                        }
-                    }
+                    BannerAdManager.getOrCreateBanner(
+                        context = ctx,
+                        placement = placementName,
+                        adUnitId = adUnitId,
+                        isStandardBanner = false
+                    )
+                },
+                update = { adView ->
+                    adView.visibility = android.view.View.VISIBLE
                 },
                 onRelease = { adView ->
-                    try {
-                        adView.destroy()
-                    } catch (_: Throwable) {}
+                    // Detach from current container so it can be re-attached instantly when returning
+                    (adView.parent as? android.view.ViewGroup)?.removeView(adView)
                 }
             )
         }
@@ -323,7 +458,7 @@ fun AdMobAdaptiveBanner(
 
 /**
  * ============================================================================
- * 2. INLINE CARD AD COMPONENT (Renders Real AdMob Banner inside Material 3 Card)
+ * 2. INLINE CARD AD COMPONENT (Renders Cached AdMob Banner inside Material 3 Card)
  * ============================================================================
  */
 @Composable
@@ -335,13 +470,26 @@ fun AdMobNativeAdCard(
 ) {
     val cardBg = if (isLightTheme) Color.White else Color(0xFF111E34)
     val borderColor = if (isLightTheme) Color(0xFFCBD5E1) else Color(0xFF23385E)
-    var adLoadedSuccessfully by remember(adUnitId) { mutableStateOf(false) }
+    val isLoaded = BannerAdManager.isAdLoaded(placementName)
+
+    if (!isLoaded) {
+        val context = LocalContext.current
+        LaunchedEffect(placementName) {
+            BannerAdManager.getOrCreateBanner(
+                context = context,
+                placement = placementName,
+                adUnitId = adUnitId,
+                isStandardBanner = true
+            )
+        }
+        return
+    }
 
     Surface(
-        color = if (adLoadedSuccessfully) cardBg else Color.Transparent,
+        color = cardBg,
         shape = RoundedCornerShape(20.dp),
-        border = if (adLoadedSuccessfully) BorderStroke(1.2.dp, borderColor) else null,
-        shadowElevation = if (adLoadedSuccessfully) 4.dp else 0.dp,
+        border = BorderStroke(1.2.dp, borderColor),
+        shadowElevation = 4.dp,
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
@@ -350,35 +498,24 @@ fun AdMobNativeAdCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = if (adLoadedSuccessfully) 8.dp else 0.dp),
+                .padding(vertical = if (isLoaded) 8.dp else 0.dp),
             contentAlignment = Alignment.Center
         ) {
             androidx.compose.ui.viewinterop.AndroidView(
                 modifier = Modifier.fillMaxWidth(),
                 factory = { ctx ->
-                    com.google.android.gms.ads.AdView(ctx).apply {
-                        setAdSize(com.google.android.gms.ads.AdSize.BANNER)
-                        this.adUnitId = adUnitId
-                        adListener = object : com.google.android.gms.ads.AdListener() {
-                            override fun onAdLoaded() {
-                                adLoadedSuccessfully = true
-                            }
-
-                            override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                                adLoadedSuccessfully = false
-                            }
-                        }
-                        try {
-                            loadAd(com.google.android.gms.ads.AdRequest.Builder().build())
-                        } catch (_: Throwable) {
-                            adLoadedSuccessfully = false
-                        }
-                    }
+                    BannerAdManager.getOrCreateBanner(
+                        context = ctx,
+                        placement = placementName,
+                        adUnitId = adUnitId,
+                        isStandardBanner = true
+                    )
+                },
+                update = { adView ->
+                    adView.visibility = android.view.View.VISIBLE
                 },
                 onRelease = { adView ->
-                    try {
-                        adView.destroy()
-                    } catch (_: Throwable) {}
+                    (adView.parent as? android.view.ViewGroup)?.removeView(adView)
                 }
             )
         }

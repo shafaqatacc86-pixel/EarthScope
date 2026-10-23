@@ -44,9 +44,11 @@ class MainActivity : ComponentActivity() {
         try {
             com.google.android.gms.ads.MobileAds.initialize(this) {
                 com.example.ui.AdMobManager.initialize(applicationContext)
+                com.example.ui.BannerAdManager.preloadInitialBanners(this)
             }
         } catch (_: Throwable) {
             com.example.ui.AdMobManager.initialize(applicationContext)
+            com.example.ui.BannerAdManager.preloadInitialBanners(this)
         }
         setContent {
             val uiState by globeViewModel.uiState.collectAsStateWithLifecycle()
@@ -58,5 +60,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        com.example.ui.BannerAdManager.pauseAll()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        com.example.ui.BannerAdManager.resumeAll()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        com.example.ui.BannerAdManager.destroyAll()
     }
 }

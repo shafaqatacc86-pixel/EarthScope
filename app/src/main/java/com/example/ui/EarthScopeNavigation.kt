@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -71,6 +72,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -207,17 +209,6 @@ fun EarthScopeAppHost(viewModel: GlobeViewModel) {
 
     val dashboardGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
 
-    // Smooth, instant startup transition (380ms) without any blocking loading modal or App Open Ad wait
-    LaunchedEffect(Unit) {
-        if (!StartupTracker.hasCompletedSplash) {
-            delay(380)
-            StartupTracker.hasCompletedSplash = true
-            if (currentDestination == EarthScopeDestination.SPLASH) {
-                currentDestination = EarthScopeDestination.HOME_DASHBOARD
-            }
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -227,7 +218,7 @@ fun EarthScopeAppHost(viewModel: GlobeViewModel) {
             targetState = currentDestination,
             transitionSpec = {
                 // Fade-in on top of the old screen: eliminates the black gap/blink completely!
-                fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing)) togetherWith ExitTransition.None
+                fadeIn(animationSpec = tween(260, easing = FastOutSlowInEasing)) togetherWith ExitTransition.None
             },
             label = "screen_crossfade"
         ) { destination ->
@@ -236,6 +227,8 @@ fun EarthScopeAppHost(viewModel: GlobeViewModel) {
                     EarthScopeSplashScreen(
                         isLightTheme = isLightTheme,
                         onContinue = {
+                            localStore.setAcceptedPrivacyAndTerms(true)
+                            hasAcceptedPrivacyTerms = true
                             StartupTracker.hasCompletedSplash = true
                             currentDestination = EarthScopeDestination.HOME_DASHBOARD
                         }
@@ -419,59 +412,200 @@ fun EarthScopeSplashScreen(
     isLightTheme: Boolean,
     onContinue: () -> Unit
 ) {
+    val context = LocalContext.current
     val bgBrush = if (isLightTheme) {
-        Brush.verticalGradient(listOf(Color(0xFFF8FAFC), Color(0xFFE0F2FE)))
+        Brush.verticalGradient(listOf(Color(0xFFF0F9FF), Color(0xFFE0F2FE), Color(0xFFF8FAFC)))
     } else {
-        Brush.verticalGradient(listOf(Color(0xFF040914), Color(0xFF0B192C)))
+        Brush.verticalGradient(listOf(Color(0xFF030712), Color(0xFF0B1728), Color(0xFF040914)))
     }
     val primaryText = if (isLightTheme) Color(0xFF0F172A) else Color.White
+    val secondaryText = if (isLightTheme) Color(0xFF64748B) else Color(0xFF94A3B8)
     val accentText = if (isLightTheme) Color(0xFF0284C7) else Color(0xFF38BDF8)
+    val cardBg = if (isLightTheme) Color.White.copy(alpha = 0.90f) else Color(0xFF0E1A2E).copy(alpha = 0.90f)
+    val borderColor = if (isLightTheme) Color(0xFFE2E8F0) else Color(0xFF1E3252)
 
+    var progress by remember { mutableFloatStateOf(0.04f) }
+
+    // Logo gentle pulse animation
     val infiniteTransition = rememberInfiniteTransition(label = "splash_pulse")
     val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
+        initialValue = 0.96f,
+        targetValue = 1.04f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
+            animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "logo_scale"
     )
+    val ringScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "radar_ring"
+    )
+    val ringAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.55f,
+        targetValue = 0.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "radar_alpha"
+    )
+
+    // Preload ads and services silently in background while progress bar runs smoothly
+    // Ads are strictly preloaded into cache, NOT displayed on this screen!
+    LaunchedEffect(Unit) {
+        try {
+            com.google.android.gms.ads.MobileAds.initialize(context)
+            BannerAdManager.preloadInitialBanners(context)
+            AdMobManager.preloadInterstitial(context)
+        } catch (_: Throwable) {}
+
+        val totalSteps = 60
+        for (i in 1..totalSteps) {
+            progress = i.toFloat() / totalSteps
+            delay(38)
+        }
+        delay(160)
+        onContinue()
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bgBrush)
-            .clickable { onContinue() }
-            .testTag("earth_scope_splash_screen"),
-        contentAlignment = Alignment.Center
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .testTag("earth_scope_unified_splash_screen")
     ) {
+        // Center Content: Logo, Title, Loading Bar
         Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 32.dp)
+            verticalArrangement = Arrangement.Center
         ) {
-            EarthScopeTransparentLogo(
-                modifier = Modifier
-                    .size(132.dp)
-                    .scale(pulseScale)
-            )
+            // Radar pulse ring + Logo
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(160.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(130.dp)
+                        .scale(ringScale)
+                        .border(1.5.dp, accentText.copy(alpha = ringAlpha), CircleShape)
+                )
 
-            Spacer(modifier = Modifier.height(20.dp))
+                EarthScopeTransparentLogo(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .scale(pulseScale)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
 
             Text(
                 text = "Earth Scope",
-                fontSize = 28.sp,
+                fontSize = 30.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = primaryText
+                color = primaryText,
+                letterSpacing = (-0.5).sp
             )
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "GPS & Maps Suite",
+                text = "GPS, 3D Globe & Satellite Suite",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = accentText
+            )
+
+            Spacer(modifier = Modifier.height(44.dp))
+
+            // Loading Card with Progress Bar (Clean: Only "Loading..." and progress)
+            Surface(
+                color = cardBg,
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, borderColor),
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Loading...",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = primaryText
+                        )
+                        Text(
+                            text = "${(progress * 100).toInt()}%",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentText
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Polished Gradient Progress Bar
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(if (isLightTheme) Color(0xFFE2E8F0) else Color(0xFF1E293B))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progress.coerceIn(0.04f, 1.0f))
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(Color(0xFF06B6D4), Color(0xFF0284C7), Color(0xFF38BDF8))
+                                    )
+                                )
+                        )
+                    }
+                }
+            }
+        }
+
+        // Bottom Footer: Version & Single Terms Acceptance (No second splash or annoying popup!)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 20.dp, start = 24.dp, end = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Earth Scope • Version 1.1",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = secondaryText
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = "All-in-one GPS • Compass • 3D World Globe",
+                fontSize = 10.sp,
+                color = secondaryText.copy(alpha = 0.8f)
             )
         }
     }
@@ -764,38 +898,7 @@ fun EarthScopeDashboardScreen(
                 }
 
                 items(
-                    items = features.take(4),
-                    key = { it.id },
-                    contentType = { "feature_card" }
-                ) { item ->
-                    FeatureCategoryCard(
-                        item = item,
-                        cardBg = cardBg,
-                        borderColor = borderColor,
-                        primaryText = primaryText,
-                        secondaryText = secondaryText,
-                        onClick = {
-                            when (item.actionType) {
-                                "SETTINGS" -> onOpenSettings()
-                                "DIRECTIONS" -> onOpenFlightDirections()
-                                "MEASURE_MAP" -> onOpenMeasureMap()
-                                else -> item.destination?.let { onNavigate(it) }
-                            }
-                        }
-                    )
-                }
-
-                item(span = { GridItemSpan(maxLineSpan) }, contentType = "native_ad") {
-                    AdMobNativeAdCard(
-                        placementName = "Dashboard_Native_Card",
-                        adUnitId = AdMobConfig.NATIVE_HOME_FEED_AD_UNIT_ID,
-                        isLightTheme = isLightTheme,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                }
-
-                items(
-                    items = features.drop(4),
+                    items = features,
                     key = { it.id },
                     contentType = { "feature_card" }
                 ) { item ->

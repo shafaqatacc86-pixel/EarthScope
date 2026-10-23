@@ -1047,7 +1047,7 @@ private fun AboutUsSubPage(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Version 1.0 • com.shafaqat.earthscope",
+                    text = "Version 1.1 • com.shafaqat.earthscope",
                     fontSize = 12.sp,
                     color = Color(0xFF0284C7),
                     fontWeight = FontWeight.SemiBold,
