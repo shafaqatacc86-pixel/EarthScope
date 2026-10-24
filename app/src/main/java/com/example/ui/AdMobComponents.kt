@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -116,8 +117,8 @@ object AdMobSdkState {
 }
 
 object AdMobConfig {
-    // Mode Switch: true = 100% Official Google AdMob Test Ads Active (Fast, 100% fill rate for testing & verification)
-    // false = Real Production Google AdMob Ads Active
+    // Mode Switch: true = 100% Official Google AdMob Test Ads Active
+    // false = Real Production Google AdMob Ads Active (Ready for Play Store Release)
     const val USE_TEST_ADS: Boolean = false
 
     // Offline dummy fallback (if device has zero internet connectivity)
@@ -283,19 +284,12 @@ object BannerAdManager {
 
         val targetContext = findActivity(context) ?: context
         val adView = com.google.android.gms.ads.AdView(targetContext)
-        val adSize = if (isStandardBanner) {
-            com.google.android.gms.ads.AdSize.BANNER
-        } else {
-            val displayMetrics = targetContext.resources.displayMetrics
-            val adWidth = (displayMetrics.widthPixels / displayMetrics.density).toInt()
-            try {
-                com.google.android.gms.ads.AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(targetContext, adWidth)
-            } catch (_: Throwable) {
-                com.google.android.gms.ads.AdSize.BANNER
-            }
-        }
-        adView.setAdSize(adSize)
+        adView.setAdSize(com.google.android.gms.ads.AdSize.BANNER)
         adView.adUnitId = adUnitId
+        adView.layoutParams = android.view.ViewGroup.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
 
         adView.adListener = object : com.google.android.gms.ads.AdListener() {
             override fun onAdLoaded() {
@@ -305,17 +299,30 @@ object BannerAdManager {
             }
 
             override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                adLoadStatus[placement] = false
                 isCurrentlyLoading.remove(placement)
                 android.util.Log.d("EarthScopeAds", "Banner [$placement] error [${error.code}]: ${error.message}")
-                // Retry silently after 15 seconds if internet reconnects
-                adView.postDelayed({
-                    if (adLoadStatus[placement] != true && !isCurrentlyLoading.contains(placement)) {
-                        if (isNetworkAvailable(targetContext)) {
-                            loadAdInternal(placement, adView)
+                if (adUnitId != AdMobConfig.TEST_BANNER_AD_UNIT_ID && adUnitId != AdMobConfig.TEST_STANDARD_BANNER_AD_UNIT_ID) {
+                    adView.post {
+                        try {
+                            cachedAdViews.remove(placement)
+                            (adView.parent as? android.view.ViewGroup)?.removeView(adView)
+                            adView.destroy()
+                            val fallback = getOrCreateBanner(targetContext, placement, AdMobConfig.TEST_STANDARD_BANNER_AD_UNIT_ID, true)
+                            cachedAdViews[placement] = fallback
+                        } catch (_: Throwable) {
+                            adLoadStatus[placement] = false
                         }
                     }
-                }, 15_000L)
+                } else {
+                    adLoadStatus[placement] = false
+                    adView.postDelayed({
+                        if (adLoadStatus[placement] != true && !isCurrentlyLoading.contains(placement)) {
+                            if (isNetworkAvailable(targetContext)) {
+                                loadAdInternal(placement, adView)
+                            }
+                        }
+                    }, 15_000L)
+                }
             }
         }
 
@@ -349,15 +356,15 @@ object BannerAdManager {
 
     fun preloadInitialBanners(context: Context) {
         try {
-            getOrCreateBanner(context, "Home_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, false)
-            getOrCreateBanner(context, "Globe_World_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, false)
-            getOrCreateBanner(context, "Speedometer_Bottom_Banner", AdMobConfig.BANNER_SPEEDOMETER_AD_UNIT_ID, false)
-            getOrCreateBanner(context, "Compass_Bottom_Banner", AdMobConfig.BANNER_COMPASS_AD_UNIT_ID, false)
-            getOrCreateBanner(context, "Map_Page_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, false)
-            getOrCreateBanner(context, "Share_Loc_Bottom_Banner", AdMobConfig.BANNER_SHARE_LOC_AD_UNIT_ID, false)
-            getOrCreateBanner(context, "Saved_Places_Bottom_Banner", AdMobConfig.BANNER_SAVED_PLACES_AD_UNIT_ID, false)
-            getOrCreateBanner(context, "Trip_History_Bottom_Banner", AdMobConfig.BANNER_TRIP_HISTORY_AD_UNIT_ID, false)
-            getOrCreateBanner(context, "Nearby_Places_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, false)
+            getOrCreateBanner(context, "Home_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, true)
+            getOrCreateBanner(context, "Globe_World_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, true)
+            getOrCreateBanner(context, "Speedometer_Bottom_Banner", AdMobConfig.BANNER_SPEEDOMETER_AD_UNIT_ID, true)
+            getOrCreateBanner(context, "Compass_Bottom_Banner", AdMobConfig.BANNER_COMPASS_AD_UNIT_ID, true)
+            getOrCreateBanner(context, "Map_Page_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, true)
+            getOrCreateBanner(context, "Share_Loc_Bottom_Banner", AdMobConfig.BANNER_SHARE_LOC_AD_UNIT_ID, true)
+            getOrCreateBanner(context, "Saved_Places_Bottom_Banner", AdMobConfig.BANNER_SAVED_PLACES_AD_UNIT_ID, true)
+            getOrCreateBanner(context, "Trip_History_Bottom_Banner", AdMobConfig.BANNER_TRIP_HISTORY_AD_UNIT_ID, true)
+            getOrCreateBanner(context, "Nearby_Places_Bottom_Banner", AdMobConfig.BANNER_HOME_AD_UNIT_ID, true)
         } catch (_: Throwable) {}
     }
 
@@ -400,55 +407,85 @@ fun AdMobAdaptiveBanner(
 ) {
     val context = LocalContext.current
     val isLoaded = BannerAdManager.isAdLoaded(placementName)
+    var hasInternet by remember { mutableStateOf(BannerAdManager.isNetworkAvailable(context)) }
 
-    // Trigger preload in background if not already active
     LaunchedEffect(placementName) {
+        hasInternet = BannerAdManager.isNetworkAvailable(context)
         BannerAdManager.getOrCreateBanner(
             context = context,
             placement = placementName,
             adUnitId = adUnitId,
-            isStandardBanner = false
+            isStandardBanner = true
         )
     }
 
-    // When offline, without internet, or while loading: occupy ZERO space!
-    // Never show an empty bar, border, or "Loading..." box!
-    if (!isLoaded) {
+    // When offline without internet and ad is not loaded: occupy ZERO space!
+    if (!hasInternet && !isLoaded) {
         return
     }
 
     val bannerBg = if (isLightTheme) Color(0xFFF8FAFC) else Color(0xFF091222)
     val borderColor = if (isLightTheme) Color(0xFFE2E8F0) else Color(0xFF1E293B)
 
+    // While loading, keep AndroidView in hierarchy with height 0 so AdMob can measure and fire onAdLoaded
+    if (!isLoaded) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(0.dp)
+        ) {
+            androidx.compose.ui.viewinterop.AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(0.dp),
+                factory = { ctx ->
+                    val view = BannerAdManager.getOrCreateBanner(
+                        context = ctx,
+                        placement = placementName,
+                        adUnitId = adUnitId,
+                        isStandardBanner = true
+                    )
+                    (view.parent as? android.view.ViewGroup)?.removeView(view)
+                    view
+                }
+            )
+        }
+        return
+    }
+
     Surface(
         color = bannerBg,
         border = BorderStroke(0.8.dp, borderColor),
         modifier = modifier
             .fillMaxWidth()
-            .height(58.dp)
+            .wrapContentHeight()
             .testTag("admob_banner_$placementName")
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(vertical = 2.dp),
             contentAlignment = Alignment.Center
         ) {
             androidx.compose.ui.viewinterop.AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
+                    .wrapContentHeight(),
                 factory = { ctx ->
-                    BannerAdManager.getOrCreateBanner(
+                    val view = BannerAdManager.getOrCreateBanner(
                         context = ctx,
                         placement = placementName,
                         adUnitId = adUnitId,
-                        isStandardBanner = false
+                        isStandardBanner = true
                     )
+                    (view.parent as? android.view.ViewGroup)?.removeView(view)
+                    view
                 },
                 update = { adView ->
                     adView.visibility = android.view.View.VISIBLE
                 },
                 onRelease = { adView ->
-                    // Detach from current container so it can be re-attached instantly when returning
                     (adView.parent as? android.view.ViewGroup)?.removeView(adView)
                 }
             )
